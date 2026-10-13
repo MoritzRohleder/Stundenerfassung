@@ -1,7 +1,7 @@
 # Stundenerfassung-Spec
 
 > Spezifikation für die Webanwendung **Stundenerfassung** zum privaten Nachhalten der eigenen Arbeitszeit.
-> Status: **v0.1** der Spezifikation – Entwurf, noch nicht umgesetzt.
+> Status: **v0.2** der Spezifikation – abgestimmt, Grundlage für den Prototypen.
 > Technisch angelehnt an das Haushaltsprojekt (Node.js, Express, EJS, Pico.css, JSON-Dateien, Docker), aber nicht 1:1.
 > Getroffene Entscheidungen stehen in [Kapitel 13.1](#131-entscheidungen), offene Punkte in [Kapitel 13.2](#132-offene-fragen) (im Text mit `❓` markiert).
 
@@ -83,6 +83,8 @@ Die Anwendung ist **strikt privat**: Es gibt keine geteilten Daten.
 
 IDs sind zufällige UUIDs (`crypto.randomUUID()`). Datum intern ISO `JJJJ-MM-TT`, Uhrzeiten intern als **Minuten seit 00:00** (`0`–`1440`).
 
+**Es gibt keine Standardwerte** für Arbeitszeit, Bundesland, Beginn der Erfassung, Startsaldo und Urlaubsanspruch: Der Nutzer muss sie nach der Registrierung selbst eintragen (Einrichtung, siehe 8.1).
+
 ### 5.1 Überblick
 
 ```
@@ -108,10 +110,11 @@ IDs sind zufällige UUIDs (`crypto.randomUUID()`). Datum intern ISO `JJJJ-MM-TT`
 | `username` | Text | ja | Login-Name, eindeutig, nicht case-sensitiv; wird auch als Name angezeigt |
 | `password_hash` | Text | ja | scrypt-Hash inkl. Salt (siehe [10.4](#104-login-und-sitzungen)) |
 | `theme` | Enum | ja | `auto`, `light`, `dark`. Default `auto` |
-| `state` | Enum | ja | Bundesland für Feiertage: `BW`, `BY`, `BE`, `BB`, `HB`, `HH`, `HE`, `MV`, `NI`, `NW`, `RP`, `SL`, `SN`, `ST`, `SH`, `TH`. Wird bei der Registrierung abgefragt |
-| `tracking_start` | Datum | ja | Ab diesem Tag zählen Soll und Überstundenkonto. Default: Tag der Registrierung. Tage davor können trotzdem erfasst werden, gehen aber nicht ins Konto ein |
-| `overtime_start_minutes` | Integer | ja | Startsaldo des Überstundenkontos zum `tracking_start` (darf negativ sein). Default 0 |
-| `vacation_days_default` | Dezimal (Schritt 0,5) | ja | Urlaubsanspruch pro Jahr, wenn für ein Jahr nichts Eigenes hinterlegt ist. Default 30 |
+| `state` | Enum | nach Einrichtung | Bundesland für Feiertage: `BW`, `BY`, `BE`, `BB`, `HB`, `HH`, `HE`, `MV`, `NI`, `NW`, `RP`, `SL`, `SN`, `ST`, `SH`, `TH` |
+| `tracking_start` | Datum | nach Einrichtung | Ab diesem Tag zählen Soll und Überstundenkonto. Tage davor können trotzdem erfasst werden, gehen aber nicht ins Konto ein |
+| `overtime_start_minutes` | Integer | nach Einrichtung | Startsaldo des Überstundenkontos zum `tracking_start` (darf negativ sein) |
+| `vacation_days_default` | Dezimal (Schritt 0,5) | nach Einrichtung | Urlaubsanspruch pro Jahr, wenn für ein Jahr nichts Eigenes hinterlegt ist |
+| `setup_done` | Boolean | ja | `false` nach der Registrierung, `true` sobald die Einrichtung (8.1) gespeichert ist |
 | `created_at` | Zeitstempel | ja | |
 
 #### Zeitblock (`time_blocks`)
@@ -141,7 +144,7 @@ Optionale Zusatzangaben zu einem Datum. Ein Datensatz existiert nur, wenn eine d
 | `date` | Datum | ja | eindeutig je Nutzer |
 | `manual_break_min` | Integer ≥ 0 | nein | Manuell eingetragene Pause. **Nur bei genau einem Zeitblock** möglich (siehe 6.2). Leer = automatisch |
 | `absence_type` | Enum | nein | `vacation` (Urlaub), `sick` (krank), `comp_time` (Freizeitausgleich/Überstundenabbau), `other_paid` (sonstige bezahlte Freistellung, z. B. Sonderurlaub) |
-| `absence_fraction` | Enum | bei `absence_type` | `1` (ganzer Tag) oder `0.5` (halber Tag) |
+| `absence_fraction` | Enum | bei `absence_type` | `1` (ganzer Tag) oder `0.5` (halber Tag). Bei `sick` immer `1` |
 | `note` | Text | nein | Freitext, max. 200 Zeichen |
 | `created_at`, `updated_at` | Zeitstempel | ja | |
 
@@ -150,7 +153,7 @@ Regeln:
 - Ganzer Tag Abwesenheit und Zeitblöcke am selben Tag: erlaubt, aber mit Hinweis (z. B. kurz trotz Urlaub gearbeitet – zählt als Plus).
 - Halber Tag Abwesenheit + Zeitblöcke ist der Normalfall für „halber Tag Urlaub, halber Tag gearbeitet“.
 - Abwesenheit an Tagen ohne Soll (Wochenende, Feiertag, kein Arbeitstag laut Modell) wird abgelehnt.
-- ❓ F1: Sind halbe Tage auch bei Krankheit, Freizeitausgleich und Sonstigem nötig, oder nur bei Urlaub? Vorschlag: bei allen erlaubt.
+- Halbe Tage gibt es bei Urlaub, Freizeitausgleich und sonstiger Freistellung, **nicht bei Krankheit** (E-19).
 
 #### Arbeitszeitmodell (`work_schedules`)
 
@@ -159,17 +162,17 @@ Regeln:
 | `id` | UUID | ja | |
 | `user_id` | UUID → users | ja | |
 | `valid_from` | Datum | nein | Leer = **Standardmodell** (gilt immer, wenn kein Zeitraum greift) |
-| `valid_to` | Datum | nein | Letzter Tag des Zeitraums (einschließlich). Bei Zeiträumen Pflicht |
+| `valid_to` | Datum | nein | Letzter Tag des Zeitraums (einschließlich). Leer = **offen** („bis auf Weiteres“), nur beim zeitlich letzten Zeitraum erlaubt |
 | `weekly_min` | Integer ≥ 0 | ja | Wochenarbeitszeit in Minuten (40 h = 2400) |
-| `workdays` | Liste 1–7 | ja | Arbeitstage (ISO: 1 = Montag … 7 = Sonntag), mindestens einer. Default Mo–Fr |
+| `workdays` | Liste 1–7 | ja | Arbeitstage (ISO: 1 = Montag … 7 = Sonntag), mindestens einer |
 | `note` | Text | nein | z. B. „Projektphase“ |
 
 Regeln:
 
-- Jeder Nutzer hat **genau ein Standardmodell** (wird bei der Registrierung angelegt, Vorschlag 40 h, Mo–Fr).
+- Jeder Nutzer hat **genau ein Standardmodell**; es wird bei der Einrichtung (8.1) mit den Angaben des Nutzers angelegt.
 - Zeiträume dürfen sich **nicht überschneiden**. Für einen Tag gilt der Zeitraum, der ihn enthält, sonst das Standardmodell.
 - Beispiel: Standard 20 h/Woche; Zeitraum 01.02.2027–10.04.2027 mit 40 h/Woche.
-- ❓ F2: Soll es auch offene Zeiträume geben („ab 01.05.2027 dauerhaft 30 h“)? Hintergrund: Ändert man das **Standardmodell**, ändert sich rückwirkend das Soll aller vergangenen Tage ohne Zeitraum. Vorschlag: `valid_to` darf beim zeitlich letzten Zeitraum leer bleiben; dauerhafte Änderungen legt man so als Zeitraum an, statt das Standardmodell umzustellen.
+- **Offene Zeiträume** (E-20): Der zeitlich letzte Zeitraum darf ohne Ende sein, z. B. „ab 01.05.2027 dauerhaft 30 h“. So ändert man die Arbeitszeit dauerhaft, ohne das Standardmodell umzustellen – denn eine Änderung am **Standardmodell** wirkt rückwirkend auf alle Tage ohne Zeitraum (die Oberfläche weist darauf hin).
 
 #### Urlaubsanspruch (`vacation_entitlements`)
 
@@ -211,11 +214,8 @@ Ist-Zeit    = Blockzeit − abzuziehende Pause   (nie < 0)
 | mehr als 6:00 h bis 9:00 h | 30 min |
 | mehr als 9:00 h | 45 min |
 
-- ❓ F3: **Kappung an der Schwelle?** Bei 6:10 h Blockzeit würde die starre Regel 30 min abziehen → 5:40 h Ist, also weniger als bei genau 6:00 h. Vorschlag: Die automatische Pause wird so begrenzt, dass das Ist nicht unter die Schwelle fällt:
-  - Blockzeit > 6:00 h bis 9:00 h: `Pause = min(30, Blockzeit − 6:00)` → 6:10 h ergibt 10 min Pause und 6:00 h Ist.
-  - Blockzeit > 9:00 h: `Pause = 30 + min(15, Blockzeit − 9:00)` → 9:10 h ergibt 40 min Pause und 8:30 h Ist.
-  - So steigt das Ist nie, wenn man kürzer arbeitet. Alternative: starr wie in der Tabelle.
-- ❓ F4: **Mehrere Blöcke mit zu kurzer Lücke** (z. B. 07:00–12:00 und 12:10–17:00 = 9:50 h mit 10 min Lücke): nur die Lücke zählt (Ist 9:50 h), oder wird auf die gesetzliche Mindestpause aufgefüllt (Ist 9:15 h)? Vorschlag: nur die Lücke zählen, aber einen **Hinweis** „Mindestpause unterschritten“ anzeigen – die Anwendung bildet ab, was tatsächlich war.
+- Die automatische Pause wird **starr** abgezogen, ohne Kappung (E-21): Bei 6:10 h Blockzeit hätte man gesetzlich 30 min Pause machen müssen, also ergeben sich 5:40 h Ist.
+- **Mehrere Blöcke mit zu kurzer Lücke** (z. B. 07:00–12:00 und 12:10–17:00 = 9:50 h mit 10 min Lücke): Es zählt nur die tatsächliche Lücke (Ist 9:50 h); die Anwendung zeigt den **Hinweis** „Mindestpause unterschritten (45 min nötig)“ (E-22).
 - Unterschreitet eine **manuelle** Pause die gesetzliche Mindestpause, wird sie trotzdem verwendet; die Anwendung zeigt einen Hinweis.
 - Eine manuelle Pause größer als die Blockzeit wird abgelehnt.
 
@@ -238,12 +238,15 @@ Soll(Tag)     = 0                                                wenn gesetzlich
 
 ```
 Saldo(Tag)          = Ist(Tag) − Soll(Tag)
-Saldo(Zeitraum)     = Σ Saldo(Tag) für alle Tage im Zeitraum mit tracking_start ≤ Tag ≤ heute
-Überstundenkonto    = overtime_start_minutes + Saldo(tracking_start … heute)
+Wertung(Tag)        = Saldo(Tag)              für tracking_start ≤ Tag < heute   (abgelaufene Tage)
+                    = max(0, Saldo(heute))    für Tag = heute
+                    = 0                       für künftige Tage und Tage vor tracking_start
+Saldo(Zeitraum)     = Σ Wertung(Tag) im Zeitraum
+Überstundenkonto    = overtime_start_minutes + Σ Wertung(Tag) aller Tage
 ```
 
-- „Heute“ zählt mit (auch wenn der Tag noch läuft). ❓ F5: Oder soll „heute“ erst ab dem nächsten Tag ins Konto eingehen, damit morgens nicht gleich −8 h dastehen? Vorschlag: heute zählt nur, wenn schon etwas erfasst ist.
-- In der Monats- und Jahresübersicht werden für den laufenden Monat **Soll bis heute** und **Soll gesamt (ganzer Monat)** getrennt gezeigt.
+- **Minusstunden zählen erst nach Ablauf des Tages** (E-23): Am laufenden Tag gehen nur Plusstunden ins Konto ein (wer heute schon über dem Soll ist, sieht das sofort); ein Minus des heutigen Tages wird erst ab 00:00 des Folgetages gebucht. So stehen morgens nicht gleich −8 h da.
+- In der Monats- und Jahresübersicht werden für den laufenden Monat **Soll abgelaufene Tage** (bis gestern) und **Soll gesamt (ganzer Monat)** getrennt gezeigt. Die Ist-Summe enthält immer alle erfassten Zeiten, auch die von heute.
 - Kontostand am Ende jedes Monats (für die Jahresübersicht) = Überstundenkonto bis zum Monatsletzten.
 
 ### 6.5 Woche
@@ -272,7 +275,7 @@ Rest(Jahr)      = Anspruch + Übertrag − Genommen
 - Länderspezifisch: Heilige Drei Könige (BW, BY, ST), Internationaler Frauentag (BE, MV), Fronleichnam (BW, BY, HE, NW, RP, SL), Mariä Himmelfahrt (SL; BY nur teilweise → nicht berücksichtigt), Weltkindertag (TH), Reformationstag (BB, HB, HH, MV, NI, SN, ST, SH, TH), Allerheiligen (BW, BY, NW, RP, SL), Buß- und Bettag (SN).
 - Ostersonntag und Pfingstsonntag (in BB gesetzlich) fallen immer auf einen Sonntag und spielen nur eine Rolle, wenn der Sonntag ein Arbeitstag im Modell ist; sie werden für BB mitgeführt.
 - Heiligabend und Silvester sind **keine** Feiertage (keine Sonderregel im ersten Release).
-- Ein Bundesland-Wechsel des Nutzers wirkt sich auf alle Tage aus (auch rückwirkend). ❓ F6: reicht das, oder muss das Bundesland ebenfalls zeitraumbezogen sein (Umzug)? Vorschlag: reicht für den Prototypen.
+- Ein Bundesland-Wechsel des Nutzers wirkt sich auf alle Tage aus (auch rückwirkend). Ein zeitraumbezogenes Bundesland (Umzug) gibt es vorerst nicht (E-25).
 
 ### 6.8 Formate
 
@@ -290,7 +293,7 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 
 | ID | Anforderung | Prio |
 |----|-------------|------|
-| F-01 | Registrieren mit Nutzername, Passwort (mit Wiederholung) und Bundesland | M |
+| F-01 | Registrieren mit Nutzername und Passwort (mit Wiederholung) | M |
 | F-02 | Anmelden, Abmelden | M |
 | F-03 | Alle Seiten außer Login/Registrierung/Health nur angemeldet erreichbar | M |
 | F-04 | Eigenes Passwort ändern | S |
@@ -303,7 +306,7 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 |----|-------------|------|
 | F-10 | Standard-Arbeitszeitmodell bearbeiten (Wochenarbeitszeit, Arbeitstage) | M |
 | F-11 | Zeiträume mit abweichendem Arbeitszeitmodell anlegen, bearbeiten, löschen (keine Überschneidungen) | M |
-| F-12 | Bundesland, Beginn der Erfassung (`tracking_start`) und Startsaldo des Überstundenkontos einstellen | M |
+| F-12 | **Einrichtung** nach der Registrierung (Pflicht, ohne Vorbelegung): Bundesland, Beginn der Erfassung, Startsaldo Überstunden, Urlaubsanspruch pro Jahr, Standard-Arbeitszeitmodell. Bis dahin leitet jede Seite auf die Einrichtung um. Alle Werte später in den Einstellungen änderbar | M |
 | F-13 | Urlaubsanspruch: Standard pro Jahr und abweichender Anspruch bzw. manueller Übertrag je Jahr | S |
 
 ### 7.3 Erfassen
@@ -343,16 +346,22 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 ### 8.1 Registrierung und erste Schritte
 
 1. Nicht angemeldet → Login-Seite mit Link „Registrieren“.
-2. Registrieren: Nutzername, Passwort, Passwort wiederholen, Bundesland.
-3. Danach angemeldet; es wird ein Standardmodell (40 h, Mo–Fr) angelegt und `tracking_start` = heute gesetzt.
-4. Das Dashboard zeigt einen Hinweis „Prüfe deine Wochenarbeitszeit und den Beginn der Erfassung“ mit Link zu den Einstellungen, bis der Nutzer die Einstellungen einmal gespeichert hat.
+2. Registrieren: Nutzername, Passwort, Passwort wiederholen.
+3. Danach ist der Nutzer angemeldet und landet auf der **Einrichtung** (`/einrichtung`). Alle Felder sind leer und Pflicht – es gibt keine Vorbelegung:
+   - Bundesland,
+   - Beginn der Erfassung (Datum),
+   - Startsaldo Überstunden (Plus/Minus, `h:mm` oder Dezimal; „0“ muss bewusst eingetragen werden),
+   - Urlaubsanspruch pro Jahr (Tage, halbe Tage möglich),
+   - Wochenarbeitszeit und Arbeitstage des Standardmodells.
+4. Bis die Einrichtung gespeichert ist, leiten alle anderen angemeldeten Seiten dorthin um (außer Abmelden und Darstellung).
+5. Danach Dashboard; abweichende Zeiträume können in den Einstellungen ergänzt werden.
 
 ### 8.2 Einen Tag erfassen
 
 1. „+ Heute“ in der Navigation oder Klick auf einen Tag in der Monatsübersicht → `/tag/JJJJ-MM-TT`.
 2. Die Seite zeigt die vorhandenen Zeitblöcke als Zeilen (Beginn – Ende) und eine leere Zeile für einen weiteren Block; „+ weiterer Block“ fügt eine Zeile hinzu (ohne JavaScript: es gibt immer eine freie Zeile, nach dem Speichern eine neue).
 3. Feld „Pause (min)“ – nur sichtbar/aktiv bei genau einem Block; Platzhalter zeigt die automatische Pause („automatisch: 30“).
-4. Abwesenheit: keine / Urlaub / krank / Freizeitausgleich / Sonstiges, jeweils ganzer oder halber Tag.
+4. Abwesenheit: keine / Urlaub / krank / Freizeitausgleich / Sonstiges, ganzer oder halber Tag (krank nur ganzer Tag).
 5. Speichern → serverseitige Prüfung (F-23) → zurück zur Tagesseite (oder Monatsübersicht, je nach Herkunft) mit Erfolgsmeldung und Berechnung.
 
 Beispiel (Standardmodell 40 h, Mo–Fr → Tagessoll 8:00 h):
@@ -387,6 +396,7 @@ Navigation: **Übersicht** (Dashboard) · **Monat** · **Jahr** · **+ Heute** �
 | Urlaub für Zeitraum | `GET/POST /abwesenheit/neu` | F-26 |
 | Monatsübersicht | `GET /monat/:jahr/:monat` | `/monat` leitet auf den aktuellen Monat um |
 | Jahresübersicht | `GET /jahr/:jahr` | `/jahr` leitet auf das aktuelle Jahr um |
+| Einrichtung | `GET/POST /einrichtung` | Pflichtangaben nach der Registrierung (F-12) |
 | Einstellungen | `GET/POST /einstellungen` | Bundesland, Beginn der Erfassung, Startsaldo, Urlaub-Standard, Passwort |
 | Arbeitszeitmodelle | `GET /einstellungen/arbeitszeit`, `GET/POST …/neu`, `…/:id/bearbeiten`, `POST …/:id/loeschen` | Standardmodell + Zeiträume |
 | Urlaubsansprüche | `GET/POST /einstellungen/urlaub` | Anspruch und Übertrag je Jahr |
@@ -546,19 +556,18 @@ Stundenerfassung/
 | E-16 | Farbe | Eigene Primärfarbe Indigo. |
 | E-17 | Sichtbarkeit | Daten strikt privat pro Nutzer. |
 | E-18 | Lizenz | GNU GPL v3. |
+| E-19 | Halbe Tage | Bei Urlaub, Freizeitausgleich und sonstiger Freistellung möglich, nicht bei Krankheit. |
+| E-20 | Offene Zeiträume | Der zeitlich letzte Zeitraum eines Arbeitszeitmodells darf ohne Enddatum sein. |
+| E-21 | Automatische Pause | Starr nach Tabelle (30 min über 6 h, 45 min über 9 h), keine Kappung an der Schwelle. |
+| E-22 | Kurze Lücken | Bei mehreren Blöcken zählt nur die tatsächliche Lücke; Hinweis, wenn die Mindestpause unterschritten ist. |
+| E-23 | Laufender Tag | Minusstunden zählen erst nach Ablauf des Tages; Plusstunden sofort. |
+| E-24 | Freizeitausgleich | Soll bleibt bestehen, Ist 0 → baut Überstunden ab. |
+| E-25 | Bundesland | Ein Bundesland pro Nutzer, nicht zeitraumbezogen. |
+| E-26 | Startwerte | Keine Standardwerte; der Nutzer trägt alles bei der Einrichtung nach der Registrierung ein. |
 
 ### 13.2 Offene Fragen
 
-| # | Frage | Vorschlag |
-|---|-------|-----------|
-| F1 | Halbe Tage auch bei Krankheit, Freizeitausgleich und Sonstigem? (5.2) | Ja, bei allen Arten. |
-| F2 | Zeiträume ohne Ende („ab 01.05. dauerhaft 30 h“)? (5.2) | Ja, `valid_to` optional; es gilt höchstens ein offener Zeitraum, der nach allen anderen liegt. So ändert sich das Soll vergangener Tage nie durch Umstellen des Standardmodells. |
-| F3 | Automatische Pause an der Schwelle kappen (6:10 h → 6:00 h statt 5:40 h)? (6.2) | Ja, kappen. |
-| F4 | Mehrere Blöcke mit zu kurzer Lücke auf die Mindestpause auffüllen? (6.2) | Nein, nur Hinweis anzeigen. |
-| F5 | Zählt „heute“ schon zum Überstundenkonto? (6.4) | Nur, wenn für heute schon etwas erfasst ist. |
-| F6 | Bundesland zeitraumbezogen (Umzug)? (6.7) | Nein, ein Bundesland pro Nutzer. |
-| F7 | Was zählt beim Freizeitausgleich: Soll bleibt, Ist 0 → baut Überstunden ab? (6.3) | Ja, so wie beschrieben. |
-| F8 | Standardwerte bei der Registrierung: 40 h Mo–Fr, 30 Urlaubstage, Erfassung ab Registrierung? (8.1) | Ja. |
+Aktuell keine.
 
 ## 14. Meilensteine
 
@@ -583,3 +592,4 @@ Das Projekt steht unter der **GNU General Public License v3.0** (siehe [`LICENSE
 | Version | Änderungen |
 |---------|------------|
 | v0.1 | Erster Entwurf auf Basis der Abstimmung: mehrere Zeitblöcke pro Tag, Pausenregel, Arbeitszeitmodelle mit Zeiträumen, Abwesenheiten mit halben Tagen, Feiertage nach Bundesland, Urlaubskonto, Monats- und Jahresübersicht, Technik angelehnt an das Haushaltsprojekt, Port 3002, Primärfarbe Indigo. |
+| v0.2 | Offene Fragen geklärt (E-19 bis E-26): keine halben Krankheitstage; offene Zeiträume; starre automatische Pause; Hinweis bei zu kurzen Lücken; Minusstunden erst nach Ablauf des Tages; Freizeitausgleich baut Überstunden ab; ein Bundesland pro Nutzer; keine Standardwerte, stattdessen Pflicht-Einrichtung nach der Registrierung. |
