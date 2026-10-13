@@ -1,0 +1,21 @@
+# Stundenerfassung auf dem Heimserver: erreichbar unter http://<server>:3002
+name: stundenerfassung
+
+services:
+  app:
+    image: ghcr.io/moritzrohleder/stundenerfassung:${STUNDEN_VERSION:-latest}
+    pull_policy: always
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${STUNDEN_PORT:-3002}:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - stundenerfassung-data:/app/data
+
+volumes:
+  stundenerfassung-data:

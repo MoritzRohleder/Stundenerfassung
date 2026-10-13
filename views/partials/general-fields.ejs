@@ -1,0 +1,26 @@
+<%# Felder: Bundesland, Beginn, Startsaldo, Urlaub. Parameter: general %>
+<label>Bundesland (für die Feiertage)
+  <select name="state" required>
+    <option value=""<% if (!general.state) { %> selected<% } %> disabled>– bitte wählen –</option>
+  <% Object.entries(STATES).forEach(([code, name]) => { %>
+    <option value="<%= code %>"<% if (general.state === code) { %> selected<% } %>><%= name %></option>
+  <% }) %>
+  </select>
+</label>
+<label>Beginn der Erfassung
+  <input type="date" name="tracking_start" value="<%= general.tracking_start %>" required>
+  <small>Ab diesem Tag zählen Soll und Überstundenkonto. Frühere Tage kannst du trotzdem eintragen.</small>
+</label>
+<fieldset>
+  <legend>Startsaldo Überstunden (zum Beginn der Erfassung)</legend>
+  <div class="grid-inline">
+    <label class="radio-label"><input type="radio" name="overtime_sign" value="plus"<% if (general.overtime_sign !== 'minus') { %> checked<% } %>> Plus</label>
+    <label class="radio-label"><input type="radio" name="overtime_sign" value="minus"<% if (general.overtime_sign === 'minus') { %> checked<% } %>> Minus</label>
+    <input name="overtime_start" value="<%= general.overtime_start %>" inputmode="decimal" placeholder="z. B. 0, 12:30 oder 4,5" required aria-label="Startsaldo in Stunden">
+  </div>
+  <small>Stunden als h:mm oder dezimal. Ohne Überstunden bitte „0“ eintragen.</small>
+</fieldset>
+<label>Urlaubsanspruch pro Jahr (Tage)
+  <input name="vacation_days_default" value="<%= general.vacation_days_default %>" inputmode="decimal" placeholder="z. B. 30" required>
+  <small>Für einzelne Jahre kannst du später einen anderen Anspruch und einen Übertrag eintragen.</small>
+</label>

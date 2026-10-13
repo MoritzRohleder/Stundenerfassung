@@ -1,0 +1,16 @@
+<%- include('../partials/header') %>
+<article class="narrow">
+  <h1>Einrichtung</h1>
+  <p>Bevor es losgeht, brauche ich ein paar Angaben. Es gibt keine Vorbelegung – bitte alles selbst eintragen. Du kannst es später in den Einstellungen ändern.</p>
+  <%- include('../partials/errors') %>
+  <form method="post" action="/einrichtung">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2>Allgemein</h2>
+    <%- include('../partials/general-fields', { general }) %>
+    <h2>Arbeitszeit</h2>
+    <p><small>Das ist dein Standardmodell. Abweichende Zeiträume (z. B. vorübergehend 40 statt 20 Stunden) legst du danach unter Einstellungen → Arbeitszeit an.</small></p>
+    <%- include('../partials/schedule-fields', { schedule, isPeriod: false }) %>
+    <button type="submit">Speichern und loslegen</button>
+  </form>
+</article>
+<%- include('../partials/footer') %>

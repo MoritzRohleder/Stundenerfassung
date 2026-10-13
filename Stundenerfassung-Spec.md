@@ -1,7 +1,7 @@
 # Stundenerfassung-Spec
 
 > Spezifikation für die Webanwendung **Stundenerfassung** zum privaten Nachhalten der eigenen Arbeitszeit.
-> Status: **v0.2** der Spezifikation – abgestimmt, Grundlage für den Prototypen.
+> Status: **v0.2** der Spezifikation – umgesetzt im Prototypen Version 0.1.0 (M0 bis M7).
 > Technisch angelehnt an das Haushaltsprojekt (Node.js, Express, EJS, Pico.css, JSON-Dateien, Docker), aber nicht 1:1.
 > Getroffene Entscheidungen stehen in [Kapitel 13.1](#131-entscheidungen), offene Punkte in [Kapitel 13.2](#132-offene-fragen) (im Text mit `❓` markiert).
 
@@ -582,6 +582,14 @@ Aktuell keine.
 | M6 | **Komfort** | F-04, F-13, F-24 bis F-26: Passwort ändern, Urlaubsansprüche, Schnelleingabe, Hinweise, Urlaub für Zeitraum. |
 | M7 | **Betrieb** | Docker (10.8), CI/CD (10.9), README mit Anleitung für den Heimserver. |
 | M8 | **Ausbau** | F-06, F-36, F-37, F-41, Stempeluhr nach Bedarf. |
+
+**Stand Version 0.1.0** (Prototyp): M0 bis M7 sind umgesetzt, F-37 (Druck-Stylesheet) in einfacher Form. Offen sind F-06 (Handbuch), F-36 (Diagramme), F-41 (CSV-Export) und die Stempeluhr.
+
+Bekannte Einschränkungen:
+
+- „Abwesenheit für einen Zeitraum“ (F-26) trägt nur ganze Tage ein und überschreibt vorhandene Abwesenheiten im Zeitraum; halbe Tage werden direkt am Tag erfasst.
+- Ein geändertes Bundesland oder Standardmodell wirkt rückwirkend (siehe 5.2, 6.7).
+- Der JSON-Speicher ist für **eine** laufende Instanz gedacht.
 
 ## 15. Lizenz
 

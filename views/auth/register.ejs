@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<article class="narrow">
+  <h1>Registrieren</h1>
+  <%- include('../partials/errors') %>
+  <form method="post" action="/registrieren">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Nutzername
+      <input name="username" value="<%= username %>" autocomplete="username" autocapitalize="none" required autofocus
+             minlength="3" maxlength="32" pattern="[A-Za-z0-9._\-]{3,32}">
+      <small>3–32 Zeichen: Buchstaben, Ziffern, Punkt, Binde- und Unterstrich.</small>
+    </label>
+    <label>Passwort
+      <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+      <small>Mindestens 8 Zeichen.</small>
+    </label>
+    <label>Passwort wiederholen
+      <input type="password" name="password_repeat" autocomplete="new-password" minlength="8" required>
+    </label>
+    <button type="submit">Registrieren</button>
+  </form>
+  <p>Schon registriert? <a href="/login">Anmelden</a></p>
+</article>
+<%- include('../partials/footer') %>

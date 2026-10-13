@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<h1>Einstellungen</h1>
+<nav class="subnav">
+  <a href="/einstellungen" aria-current="page">Allgemein</a>
+  <a href="/einstellungen/arbeitszeit">Arbeitszeit</a>
+  <a href="/einstellungen/urlaub">Urlaub</a>
+</nav>
+<div class="grid">
+  <article>
+    <h2>Allgemein</h2>
+    <%- include('../partials/errors') %>
+    <form method="post" action="/einstellungen">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <%- include('../partials/general-fields', { general }) %>
+      <button type="submit">Speichern</button>
+    </form>
+  </article>
+  <article>
+    <h2>Passwort ändern</h2>
+    <%- include('../partials/errors', { errors: passwordErrors }) %>
+    <form method="post" action="/einstellungen/passwort">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="username" value="<%= user.username %>" autocomplete="username">
+      <label>Aktuelles Passwort
+        <input type="password" name="current" autocomplete="current-password" required>
+      </label>
+      <label>Neues Passwort
+        <input type="password" name="password" autocomplete="new-password" minlength="<%= minPassword %>" required>
+      </label>
+      <label>Neues Passwort wiederholen
+        <input type="password" name="password_repeat" autocomplete="new-password" minlength="<%= minPassword %>" required>
+      </label>
+      <button type="submit" class="secondary">Passwort ändern</button>
+    </form>
+  </article>
+</div>
+<%- include('../partials/footer') %>

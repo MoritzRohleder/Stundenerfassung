@@ -1,0 +1,2 @@
+<%# Dauer zweifach anzeigen: 7:30 h und 7,50 h (Spec 6.8). Parameter: min, signed %>
+<% if (locals.signed) { %><span class="dur <%= saldoClass(min) %>"><span class="hm"><%= fmt.signedHM(min) %> h</span> <span class="dec"><%= fmt.signedDec(min) %> h</span></span><% } else { %><span class="dur"><span class="hm"><%= fmt.hm(min) %> h</span> <span class="dec"><%= fmt.dec(min) %> h</span></span><% } %>

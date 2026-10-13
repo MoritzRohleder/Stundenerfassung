@@ -1,0 +1,29 @@
+<%# Felder eines Arbeitszeitmodells. Parameter: schedule (Formularwerte), isPeriod %>
+<% if (isPeriod) { %>
+<div class="grid">
+  <label>Gültig ab
+    <input type="date" name="valid_from" value="<%= schedule.valid_from %>" required>
+  </label>
+  <label>Gültig bis (einschließlich)
+    <input type="date" name="valid_to" value="<%= schedule.valid_to %>">
+    <small>Leer = bis auf Weiteres (nur beim letzten Zeitraum).</small>
+  </label>
+</div>
+<% } %>
+<label>Wochenarbeitszeit (Stunden)
+  <input name="weekly" value="<%= schedule.weekly %>" inputmode="decimal" placeholder="z. B. 40, 38,5 oder 38:30" required>
+</label>
+<fieldset>
+  <legend>Arbeitstage</legend>
+  <div class="weekday-picker">
+  <% WEEKDAYS_SHORT.forEach((label, i) => { %>
+    <label><input type="checkbox" name="workdays" value="<%= i + 1 %>"<% if (schedule.workdays.includes(i + 1)) { %> checked<% } %>> <%= label %></label>
+  <% }) %>
+  </div>
+  <small>Die Wochenarbeitszeit wird gleichmäßig auf die Arbeitstage verteilt.</small>
+</fieldset>
+<% if (isPeriod) { %>
+<label>Notiz
+  <input name="note" value="<%= schedule.note %>" maxlength="100" placeholder="z. B. Projektphase">
+</label>
+<% } %>

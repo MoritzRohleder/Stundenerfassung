@@ -1,0 +1,75 @@
+<%- include('partials/header') %>
+<% const t = view.total; %>
+<nav class="day-nav">
+  <a href="/jahr/<%= view.year - 1 %>" aria-label="Vorheriges Jahr">←</a>
+  <h1>Jahr <%= view.year %></h1>
+  <a href="/jahr/<%= view.year + 1 %>" aria-label="Nächstes Jahr">→</a>
+</nav>
+<form method="get" action="/jahr/<%= view.year %>" class="year-select">
+  <select name="j" aria-label="Jahr wählen" data-autosubmit>
+  <% view.years.forEach((y) => { %>
+    <option value="<%= y %>"<% if (y === view.year) { %> selected<% } %>><%= y %></option>
+  <% }) %>
+  </select>
+  <noscript><button type="submit" class="secondary">Anzeigen</button></noscript>
+</form>
+
+<div class="cards cards-small">
+  <article class="card"><header>Ist</header><p class="big"><%- include('partials/duration', { min: t.ist }) %></p></article>
+  <article class="card"><header>Soll</header><p class="big"><%- include('partials/duration', { min: t.soll }) %></p></article>
+  <article class="card"><header>Saldo des Jahres</header><p class="big"><%- include('partials/duration', { min: t.saldo, signed: true }) %></p></article>
+  <article class="card"><header>Überstundenkonto</header>
+    <p class="big"><% if (view.overtimeEnd === null) { %>–<% } else { %><%- include('partials/duration', { min: view.overtimeEnd, signed: true }) %><% } %></p>
+    <p><small class="muted"><%= view.year === Number(today.slice(0, 4)) ? 'Stand heute' : 'am Jahresende' %></small></p>
+  </article>
+  <article class="card"><header>Urlaub</header>
+  <% if (view.vacation) { const v = view.vacation; %>
+    <p class="big"><%= fmt.days(v.rest) %> <small>Tage übrig</small></p>
+    <p><small class="muted">Anspruch <%= fmt.days(v.entitlement) %> + Übertrag <%= fmt.days(v.carryover) %> − genommen <%= fmt.days(v.taken) %><% if (v.planned) { %> (davon <%= fmt.days(v.planned) %> geplant)<% } %></small></p>
+  <% } else { %>
+    <p class="muted">vor Beginn der Erfassung</p>
+  <% } %>
+  </article>
+  <article class="card"><header>Krankheitstage</header><p class="big"><%= fmt.days(t.sickDays) %></p></article>
+</div>
+
+<div class="overflow-auto">
+<table class="year-table striped">
+  <thead>
+    <tr>
+      <th>Monat</th>
+      <th class="num">Ist</th>
+      <th class="num">Soll</th>
+      <th class="num">Saldo</th>
+      <th class="num">Konto am Monatsende</th>
+      <th class="num">Urlaub</th>
+      <th class="num">Krank</th>
+    </tr>
+  </thead>
+  <tbody>
+  <% view.months.forEach((m) => { %>
+    <tr class="<%= [m.isCurrent ? 'today' : '', m.isFuture ? 'future' : ''].filter(Boolean).join(' ') %>">
+      <th scope="row"><a href="/monat/<%= view.year %>/<%= m.month %>"><%= fmt.month(m.month) %></a></th>
+      <td class="num"><%- include('partials/duration', { min: m.ist }) %></td>
+      <td class="num"><%- include('partials/duration', { min: m.soll }) %></td>
+      <td class="num"><% if (!m.isFuture) { %><%- include('partials/duration', { min: m.saldo, signed: true }) %><% } %></td>
+      <td class="num"><% if (m.overtimeEnd !== null) { %><%- include('partials/duration', { min: m.overtimeEnd, signed: true }) %><% } %></td>
+      <td class="num"><%= m.vacationDays ? fmt.days(m.vacationDays) : '' %></td>
+      <td class="num"><%= m.sickDays ? fmt.days(m.sickDays) : '' %></td>
+    </tr>
+  <% }) %>
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row">Summe</th>
+      <td class="num"><%- include('partials/duration', { min: t.ist }) %></td>
+      <td class="num"><%- include('partials/duration', { min: t.soll }) %></td>
+      <td class="num"><%- include('partials/duration', { min: t.saldo, signed: true }) %></td>
+      <td class="num"><% if (view.overtimeEnd !== null) { %><%- include('partials/duration', { min: view.overtimeEnd, signed: true }) %><% } %></td>
+      <td class="num"><%= fmt.days(t.vacationDays) %></td>
+      <td class="num"><%= fmt.days(t.sickDays) %></td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+<%- include('partials/footer') %>

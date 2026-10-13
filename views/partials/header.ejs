@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de"<% if (user && user.theme && user.theme !== 'auto') { %> data-theme="<%= user.theme %>"<% } %>>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title><%= title %> · Stundenerfassung</title>
+  <link rel="stylesheet" href="/vendor/pico/pico.min.css">
+  <link rel="stylesheet" href="/static/css/theme.css">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <script src="/static/js/app.js" defer></script>
+</head>
+<body>
+<header class="container">
+  <nav class="main-nav">
+    <ul>
+      <li><a href="/" class="brand"><strong>⏱ Stundenerfassung</strong></a></li>
+    </ul>
+    <ul>
+<% if (user && user.setup_done) { %>
+      <li><a href="/"<% if (path === '/') { %> aria-current="page"<% } %>>Übersicht</a></li>
+      <li><a href="/monat"<% if (path.startsWith('/monat')) { %> aria-current="page"<% } %>>Monat</a></li>
+      <li><a href="/jahr"<% if (path.startsWith('/jahr')) { %> aria-current="page"<% } %>>Jahr</a></li>
+      <li><a href="/heute" class="nav-today">+ Heute</a></li>
+      <li><a href="/einstellungen"<% if (path.startsWith('/einstellungen')) { %> aria-current="page"<% } %>>Einstellungen</a></li>
+<% } %>
+<% if (user) { %>
+      <li>
+        <form method="post" action="/einstellungen/darstellung" class="inline-form theme-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="back" value="<%= path %>">
+          <% const nextTheme = { auto: 'light', light: 'dark', dark: 'auto' }[user.theme || 'auto']; %>
+          <input type="hidden" name="theme" value="<%= nextTheme %>">
+          <button type="submit" class="icon-button" data-theme-current="<%= user.theme || 'auto' %>"
+                  title="Darstellung: <%= { auto: 'Automatisch', light: 'Hell', dark: 'Dunkel' }[user.theme || 'auto'] %> (klicken zum Wechseln)"
+                  aria-label="Darstellung wechseln"><%= { auto: 'Auto', light: '☀', dark: '☾' }[user.theme || 'auto'] %></button>
+        </form>
+      </li>
+      <li>
+        <form method="post" action="/logout" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="link-button" title="Angemeldet als <%= user.username %>">Abmelden</button>
+        </form>
+      </li>
+<% } else { %>
+      <li><a href="/login">Anmelden</a></li>
+      <li><a href="/registrieren">Registrieren</a></li>
+<% } %>
+    </ul>
+  </nav>
+</header>
+<main class="container">
+<% if (flash) { %>
+  <p class="flash flash-<%= flash.type %>" role="status"><%= flash.text %></p>
+<% } %>

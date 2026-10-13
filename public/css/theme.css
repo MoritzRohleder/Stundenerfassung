@@ -1,0 +1,180 @@
+/* Farben und Ergänzungen zu Pico.css (Spec 10.7).
+   Alle Farben stehen hier als Variablen; Anpassungen nur in dieser Datei. */
+
+:root {
+  --se-primary: #4338ca;
+  --se-primary-hover: #3730a3;
+  --se-plus: #15803d;
+  --se-minus: #b91c1c;
+  --se-vacation: #0369a1;
+  --se-sick: #a21caf;
+  --se-off: #64748b;
+  --se-warning: #b45309;
+  --se-off-bg: rgba(100, 116, 139, 0.10);
+  --se-today-bg: rgba(67, 56, 202, 0.10);
+  --se-week-bg: rgba(67, 56, 202, 0.06);
+}
+
+@media only screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --se-primary: #818cf8;
+    --se-primary-hover: #a5b4fc;
+    --se-plus: #4ade80;
+    --se-minus: #f87171;
+    --se-vacation: #38bdf8;
+    --se-sick: #e879f9;
+    --se-off: #94a3b8;
+    --se-warning: #fbbf24;
+    --se-off-bg: rgba(148, 163, 184, 0.10);
+    --se-today-bg: rgba(129, 140, 248, 0.16);
+    --se-week-bg: rgba(129, 140, 248, 0.08);
+  }
+}
+
+[data-theme='dark'] {
+  --se-primary: #818cf8;
+  --se-primary-hover: #a5b4fc;
+  --se-plus: #4ade80;
+  --se-minus: #f87171;
+  --se-vacation: #38bdf8;
+  --se-sick: #e879f9;
+  --se-off: #94a3b8;
+  --se-warning: #fbbf24;
+  --se-off-bg: rgba(148, 163, 184, 0.10);
+  --se-today-bg: rgba(129, 140, 248, 0.16);
+  --se-week-bg: rgba(129, 140, 248, 0.08);
+}
+
+/* Pico-Primärfarbe überschreiben (:not(#_) hebt die Spezifität über Picos Selektoren) */
+:root:not(#_),
+[data-theme]:not(#_) {
+  --pico-primary: var(--se-primary);
+  --pico-primary-background: var(--se-primary);
+  --pico-primary-border: var(--se-primary);
+  --pico-primary-underline: var(--se-primary);
+  --pico-primary-hover: var(--se-primary-hover);
+  --pico-primary-hover-background: var(--se-primary-hover);
+  --pico-primary-hover-border: var(--se-primary-hover);
+  --pico-primary-focus: rgba(99, 102, 241, 0.35);
+}
+
+/* --- Layout ----------------------------------------------------------------- */
+
+.main-nav { flex-wrap: wrap; }
+.main-nav ul { flex-wrap: wrap; }
+.main-nav .brand { text-decoration: none; }
+.nav-today { font-weight: 600; }
+.inline-form { display: inline; margin: 0; }
+.inline-form button { margin: 0; }
+.link-button {
+  background: none; border: none; padding: 0; margin: 0; width: auto;
+  color: var(--pico-primary); cursor: pointer; font-size: inherit; text-decoration: underline;
+}
+.icon-button {
+  --pico-color: var(--se-primary); background: none; border: 1px solid var(--pico-muted-border-color); color: var(--se-primary);
+  padding: 0.15rem 0.55rem; margin: 0; width: auto; border-radius: 999px; line-height: 1.4;
+}
+.danger { color: var(--se-minus) !important; border-color: var(--se-minus) !important; }
+
+.narrow { max-width: 36rem; margin-inline: auto; }
+.center { text-align: center; }
+.muted { color: var(--pico-muted-color); }
+.site-footer { color: var(--pico-muted-color); padding-block: 1rem; }
+.button-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.button-row > * { width: auto; margin-bottom: 0; }
+.grid-inline { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+.grid-inline > input { flex: 1 1 10rem; margin-bottom: 0; }
+.radio-label { display: inline-flex; gap: 0.35rem; align-items: center; margin: 0; white-space: nowrap; }
+button.small { padding: 0.25rem 0.75rem; font-size: 0.9em; width: auto; }
+
+.subnav { display: flex; gap: 1.25rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.subnav a[aria-current='page'] { font-weight: 700; text-decoration: none; }
+
+.flash { padding: 0.6rem 1rem; border-radius: var(--pico-border-radius); border-left: 4px solid var(--se-plus); background: var(--pico-card-background-color); }
+.flash-error { border-left-color: var(--se-minus); }
+.errors { padding: 0.75rem 1rem; border-left: 4px solid var(--se-minus); background: var(--pico-card-background-color); margin-bottom: 1rem; border-radius: var(--pico-border-radius); }
+.errors ul { margin-bottom: 0; }
+.hint { color: var(--se-warning); }
+
+/* --- Karten ----------------------------------------------------------------- */
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.cards-small { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); margin-bottom: 1rem; }
+.cards-small .card { padding: 0.75rem 1rem; }
+.cards-small .card header { margin: -0.75rem -1rem 0.75rem; padding: 0.5rem 1rem; }
+.card { margin: 0; }
+.card header { font-weight: 600; }
+.card.highlight { border-top: 4px solid var(--se-primary); }
+.big { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+.cards-small .big { font-size: 1.2rem; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 1rem; margin-bottom: 1rem; }
+.kv dt { color: var(--pico-muted-color); }
+.kv dd { margin: 0; text-align: right; }
+
+/* --- Dauer: h:mm und dezimal --------------------------------------------------- */
+
+.dur { white-space: nowrap; }
+.dur .dec { font-size: 0.75em; color: var(--pico-muted-color); font-weight: 400; }
+.big .dur .dec { display: block; }
+.plus, .dur.plus .hm { color: var(--se-plus); }
+.minus, .dur.minus .hm { color: var(--se-minus); }
+
+/* --- Tags ------------------------------------------------------------------ */
+
+.tag {
+  display: inline-block; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.8em;
+  border: 1px solid currentColor; margin: 0.1rem 0.25rem 0.1rem 0; white-space: nowrap;
+}
+.tag-off { color: var(--se-off); }
+.tag-vacation { color: var(--se-vacation); }
+.tag-sick { color: var(--se-sick); }
+.tag-comp_time { color: var(--se-primary); }
+.tag-other_paid { color: var(--se-off); }
+.tag-warning { color: var(--se-warning); white-space: normal; }
+.note { font-size: 0.85em; color: var(--pico-muted-color); font-style: italic; }
+
+/* --- Tabellen ----------------------------------------------------------------- */
+
+th.num, td.num { text-align: right; }
+.month-table td, .month-table th, .year-table td, .year-table th { padding: 0.4rem 0.5rem; vertical-align: top; }
+.month-table tr.off td { background: var(--se-off-bg); }
+.month-table tr.today td, .year-table tr.today td, .year-table tr.today th { background: var(--se-today-bg); }
+.month-table tr.future td { color: var(--pico-muted-color); }
+.month-table .week-row th, .month-table .week-row td { background: var(--se-week-bg); font-weight: 600; }
+.month-table tfoot th, .month-table tfoot td, .year-table tfoot th, .year-table tfoot td { font-weight: 700; }
+.date-cell, .pause-cell { white-space: nowrap; }
+.date-cell .wd { display: inline-block; width: 1.6em; color: var(--pico-muted-color); }
+.info-cell { min-width: 10rem; }
+.actions { white-space: nowrap; }
+.actions > * { margin-right: 0.75rem; }
+.current-row td { background: var(--se-today-bg); }
+.year-select { max-width: 10rem; margin: 0 auto 1rem; }
+
+/* --- Tag erfassen -------------------------------------------------------------- */
+
+.day-nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
+.day-nav h1 { margin: 0; font-size: 1.5rem; text-align: center; }
+.day-nav a { font-size: 1.5rem; text-decoration: none; padding: 0 0.5rem; }
+.day-tags { text-align: center; min-height: 1rem; }
+.day-grid { align-items: start; }
+.block-row { display: flex; gap: 0.5rem; align-items: center; }
+.block-row input { margin-bottom: 0.5rem; text-align: center; font-size: 1.15rem; }
+.day-summary header { font-weight: 600; }
+.hints { color: var(--se-warning); padding-left: 1.2rem; }
+.hints:empty { display: none; }
+
+.weekday-picker { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; }
+.weekday-picker label { margin: 0; }
+
+@media (max-width: 576px) {
+  .cards-small { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+  .cards-small .big { font-size: 1.05rem; }
+  .month-table .dur .dec { display: none; }
+  .info-cell { min-width: 6rem; }
+  .day-nav h1 { font-size: 1.15rem; }
+}
+
+@media print {
+  header, .site-footer, .day-nav a, .subnav, form, .cards { display: none !important; }
+  .month-table tr.off td { background: none; }
+}

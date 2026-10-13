@@ -1,0 +1,7 @@
+<%- include('partials/header') %>
+<article class="narrow">
+  <h1><%= status === 404 ? 'Nicht gefunden' : 'Hoppla' %></h1>
+  <p><%= message %></p>
+  <p><a href="/">Zur Übersicht</a></p>
+</article>
+<%- include('partials/footer') %>

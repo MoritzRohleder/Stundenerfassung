@@ -1,0 +1,35 @@
+<%- include('../partials/header') %>
+<h1>Einstellungen</h1>
+<nav class="subnav">
+  <a href="/einstellungen">Allgemein</a>
+  <a href="/einstellungen/arbeitszeit">Arbeitszeit</a>
+  <a href="/einstellungen/urlaub" aria-current="page">Urlaub</a>
+</nav>
+<article>
+  <header><strong>Urlaubsanspruch je Jahr</strong></header>
+  <p><small>Leer lassen = Standard (<%= fmt.days(user.vacation_days_default) %> Tage) bzw. automatischer Übertrag des Resturlaubs aus dem Vorjahr.</small></p>
+  <%- include('../partials/errors') %>
+  <form method="post" action="/einstellungen/urlaub">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="overflow-auto">
+    <table>
+      <thead><tr><th>Jahr</th><th>Anspruch</th><th>Übertrag</th><th class="num">Genommen</th><th class="num">Rest</th></tr></thead>
+      <tbody>
+      <% years.forEach(({ year, ent, account }) => {
+           const daysVal = raw ? (raw[`days_${year}`] || '') : (ent && ent.days !== null ? fmt.days(ent.days) : '');
+           const carryVal = raw ? (raw[`carry_${year}`] || '') : (ent && ent.carryover_days !== null ? fmt.days(ent.carryover_days) : ''); %>
+        <tr>
+          <th scope="row"><%= year %></th>
+          <td><input name="days_<%= year %>" value="<%= daysVal %>" inputmode="decimal" placeholder="<%= fmt.days(user.vacation_days_default) %>" aria-label="Anspruch <%= year %>"></td>
+          <td><input name="carry_<%= year %>" value="<%= carryVal %>" inputmode="decimal" placeholder="auto: <%= fmt.days(account.carryover) %>" aria-label="Übertrag <%= year %>"></td>
+          <td class="num"><%= fmt.days(account.taken) %><% if (account.planned) { %> <small>(davon <%= fmt.days(account.planned) %> geplant)</small><% } %></td>
+          <td class="num<% if (account.rest < 0) { %> minus<% } %>"><%= fmt.days(account.rest) %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+    <button type="submit">Speichern</button>
+  </form>
+</article>
+<%- include('../partials/footer') %>

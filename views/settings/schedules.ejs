@@ -1,0 +1,49 @@
+<%- include('../partials/header') %>
+<h1>Einstellungen</h1>
+<nav class="subnav">
+  <a href="/einstellungen">Allgemein</a>
+  <a href="/einstellungen/arbeitszeit" aria-current="page">Arbeitszeit</a>
+  <a href="/einstellungen/urlaub">Urlaub</a>
+</nav>
+
+<article>
+  <header><strong>Standardmodell</strong> – gilt immer, wenn kein Zeitraum greift</header>
+<% if (standard) { %>
+  <p><%= fmt.hm(standard.weekly_min) %> h pro Woche an <%= standard.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ') %>
+     (<%= fmt.hm(Math.round(standard.weekly_min / standard.workdays.length)) %> h pro Arbeitstag)</p>
+  <a href="/einstellungen/arbeitszeit/<%= standard.id %>/bearbeiten" role="button" class="secondary">Bearbeiten</a>
+  <p><small class="hint">Achtung: Eine Änderung am Standardmodell wirkt auch rückwirkend auf alle Tage ohne Zeitraum. Für eine dauerhafte Änderung ab einem Datum lege besser einen Zeitraum ohne Enddatum an.</small></p>
+<% } %>
+</article>
+
+<article>
+  <header><strong>Zeiträume</strong> mit abweichender Arbeitszeit</header>
+<% if (periods.length === 0) { %>
+  <p>Noch keine Zeiträume.</p>
+<% } else { %>
+  <div class="overflow-auto">
+  <table class="striped">
+    <thead><tr><th>Zeitraum</th><th>Woche</th><th>Arbeitstage</th><th>Notiz</th><th></th></tr></thead>
+    <tbody>
+    <% periods.forEach((p) => { %>
+      <tr<% if (p.valid_from <= today && (!p.valid_to || today <= p.valid_to)) { %> class="current-row"<% } %>>
+        <td><%= fmt.date(p.valid_from) %> – <%= p.valid_to ? fmt.date(p.valid_to) : 'bis auf Weiteres' %></td>
+        <td><%= fmt.hm(p.weekly_min) %> h</td>
+        <td><%= p.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ') %></td>
+        <td><%= p.note %></td>
+        <td class="actions">
+          <a href="/einstellungen/arbeitszeit/<%= p.id %>/bearbeiten">Bearbeiten</a>
+          <form method="post" action="/einstellungen/arbeitszeit/<%= p.id %>/loeschen" class="inline-form" data-confirm="Zeitraum wirklich löschen?">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="link-button danger">Löschen</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+  </div>
+<% } %>
+  <a href="/einstellungen/arbeitszeit/neu" role="button">+ Zeitraum</a>
+</article>
+<%- include('../partials/footer') %>

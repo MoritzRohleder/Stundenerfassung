@@ -1,0 +1,14 @@
+<%- include('../partials/header') %>
+<article class="narrow">
+  <h1><%= isPeriod ? (schedule ? 'Zeitraum bearbeiten' : 'Neuer Zeitraum') : 'Standardmodell bearbeiten' %></h1>
+  <%- include('../partials/errors') %>
+  <form method="post" action="<%= schedule ? `/einstellungen/arbeitszeit/${schedule.id}/bearbeiten` : '/einstellungen/arbeitszeit/neu' %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <%- include('../partials/schedule-fields', { schedule: form, isPeriod }) %>
+    <div class="button-row">
+      <button type="submit">Speichern</button>
+      <a href="/einstellungen/arbeitszeit" role="button" class="secondary outline">Abbrechen</a>
+    </div>
+  </form>
+</article>
+<%- include('../partials/footer') %>

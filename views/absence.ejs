@@ -1,0 +1,22 @@
+<%- include('partials/header') %>
+<article class="narrow">
+  <h1>Abwesenheit für einen Zeitraum</h1>
+  <p><small>Trägt für jeden Arbeitstag im Zeitraum einen ganzen Abwesenheitstag ein. Wochenenden, Feiertage und freie Tage werden übersprungen. Halbe Tage trägst du direkt am Tag ein.</small></p>
+  <%- include('partials/errors') %>
+  <form method="post" action="/abwesenheit/neu">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="grid">
+      <label>Von <input type="date" name="from" value="<%= form.from %>" required></label>
+      <label>Bis (einschließlich) <input type="date" name="to" value="<%= form.to %>" required></label>
+    </div>
+    <label>Art
+      <select name="absence_type">
+      <% Object.entries(ABSENCE_TYPES).forEach(([key, t]) => { %>
+        <option value="<%= key %>"<% if (form.absence_type === key) { %> selected<% } %>><%= t.label %></option>
+      <% }) %>
+      </select>
+    </label>
+    <button type="submit">Eintragen</button>
+  </form>
+</article>
+<%- include('partials/footer') %>
