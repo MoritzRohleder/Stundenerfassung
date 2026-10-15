@@ -8,7 +8,7 @@
   </select>
 </label>
 <label>Beginn der Erfassung
-  <input type="date" name="tracking_start" value="<%= general.tracking_start %>" required>
+  <input name="tracking_start" value="<%= fmt.dateInput(general.tracking_start) %>" inputmode="decimal" placeholder="TT.MM.JJJJ" maxlength="10" autocomplete="off" class="date-input" required>
   <small>Ab diesem Tag zählen Soll und Überstundenkonto. Frühere Tage kannst du trotzdem eintragen.</small>
 </label>
 <fieldset>

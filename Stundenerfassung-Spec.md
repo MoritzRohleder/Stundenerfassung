@@ -283,6 +283,7 @@ Rest(Jahr)      = Anspruch + Übertrag − Genommen
 - Salden immer mit Vorzeichen: `+1:15 h` / `−0:30 h` (echtes Minuszeichen).
 - Uhrzeit `HH:MM` (24-Stunden-Format). Eingabe akzeptiert `8`, `8:15`, `08:15`, `0815` und `8.15`; `24:00` nur als Ende.
 - Datum `TT.MM.JJJJ`, Wochentag kurz (`Mo`, `Di`, …), intern ISO.
+- Datumsfelder sind **Textfelder** im Format `TT.MM.JJJJ`, keine Browser-Datumsfelder (`<input type="date">`): Deren Anzeige richtet sich nach der Spracheinstellung des Browsers und wäre z. B. auf einem englischen System amerikanisch (MM/TT/JJJJ). Eingabe akzeptiert `13.10.2026`, `1.2.2027`, `01.02.27`, `13,10,2026` (Komma, falls die Handy-Zahlentastatur keinen Punkt hat) und `13102026`.
 - Urlaubstage mit einer Nachkommastelle, wenn nötig: `12,5 Tage`.
 
 ## 7. Funktionale Anforderungen
@@ -601,3 +602,4 @@ Das Projekt steht unter der **GNU General Public License v3.0** (siehe [`LICENSE
 |---------|------------|
 | v0.1 | Erster Entwurf auf Basis der Abstimmung: mehrere Zeitblöcke pro Tag, Pausenregel, Arbeitszeitmodelle mit Zeiträumen, Abwesenheiten mit halben Tagen, Feiertage nach Bundesland, Urlaubskonto, Monats- und Jahresübersicht, Technik angelehnt an das Haushaltsprojekt, Port 3002, Primärfarbe Indigo. |
 | v0.2 | Offene Fragen geklärt (E-19 bis E-26): keine halben Krankheitstage; offene Zeiträume; starre automatische Pause; Hinweis bei zu kurzen Lücken; Minusstunden erst nach Ablauf des Tages; Freizeitausgleich baut Überstunden ab; ein Bundesland pro Nutzer; keine Standardwerte, stattdessen Pflicht-Einrichtung nach der Registrierung. |
+| v0.2.1 | Datumsfelder als Textfelder im deutschen Format statt Browser-Datumsfelder (6.8). |

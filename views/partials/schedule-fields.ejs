@@ -2,10 +2,10 @@
 <% if (isPeriod) { %>
 <div class="grid">
   <label>Gültig ab
-    <input type="date" name="valid_from" value="<%= schedule.valid_from %>" required>
+    <input name="valid_from" value="<%= fmt.dateInput(schedule.valid_from) %>" inputmode="decimal" placeholder="TT.MM.JJJJ" maxlength="10" autocomplete="off" class="date-input" required>
   </label>
   <label>Gültig bis (einschließlich)
-    <input type="date" name="valid_to" value="<%= schedule.valid_to %>">
+    <input name="valid_to" value="<%= fmt.dateInput(schedule.valid_to) %>" inputmode="decimal" placeholder="TT.MM.JJJJ" maxlength="10" autocomplete="off" class="date-input">
     <small>Leer = bis auf Weiteres (nur beim letzten Zeitraum).</small>
   </label>
 </div>

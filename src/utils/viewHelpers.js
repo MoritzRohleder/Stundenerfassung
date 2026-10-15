@@ -41,6 +41,7 @@ module.exports = {
     clock: time.formatClock,
     days: time.formatDays,
     date: date.formatDE,
+    dateInput: date.formatDateInput,
     dateShort: date.formatDEShort,
     weekday: (iso) => date.WEEKDAYS_SHORT[date.isoWeekday(iso) - 1],
     weekdayLong: (iso) => date.WEEKDAYS_LONG[date.isoWeekday(iso) - 1],

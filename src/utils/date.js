@@ -95,14 +95,22 @@ function formatDEShort(iso) {
   return `${pad(d)}.${pad(m)}.`;
 }
 
-/** Datum lesen: ISO oder "TT.MM.JJJJ". */
+/** Wert für ein Datumsfeld: ISO wird als "TT.MM.JJJJ" angezeigt, alles andere bleibt (Fehleingaben). */
+function formatDateInput(value) {
+  if (!value) return '';
+  return isValidISO(value) ? formatDE(value) : String(value);
+}
+
+/** Datum lesen: "TT.MM.JJJJ", "T.M.JJJJ", "TT.MM.JJ", "TT,MM,JJJJ", "TTMMJJJJ" oder ISO. */
 function parseDateInput(input) {
   if (!input) return null;
   const s = String(input).trim();
   if (isValidISO(s)) return s;
-  const match = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  // Punkt oder Komma als Trenner (Handy-Zahlentastatur) oder nur Ziffern: 13102026, 131026
+  const match = s.match(/^(\d{1,2})[.,](\d{1,2})[.,](\d{2}|\d{4})$/) || s.match(/^(\d{2})(\d{2})(\d{2}|\d{4})$/);
   if (match) {
-    const iso = toISO(Number(match[3]), Number(match[2]), Number(match[1]));
+    const year = match[3].length === 2 ? 2000 + Number(match[3]) : Number(match[3]);
+    const iso = toISO(year, Number(match[2]), Number(match[1]));
     if (isValidISO(iso)) return iso;
   }
   return null;
@@ -126,4 +134,5 @@ module.exports = {
   formatDE,
   formatDEShort,
   parseDateInput,
+  formatDateInput,
 };

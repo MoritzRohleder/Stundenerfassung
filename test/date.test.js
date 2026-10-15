@@ -27,4 +27,12 @@ test('Datumseingaben werden geprüft', () => {
   assert.equal(d.parseDateInput('13.10.2026'), '2026-10-13');
   assert.equal(d.parseDateInput('31.04.2026'), null);
   assert.equal(d.formatDE('2026-10-13'), '13.10.2026');
+  assert.equal(d.parseDateInput('1.2.2027'), '2027-02-01');
+  assert.equal(d.parseDateInput('01.02.27'), '2027-02-01');
+  assert.equal(d.parseDateInput('13,10,2026'), '2026-10-13');
+  assert.equal(d.parseDateInput('13102026'), '2026-10-13');
+  assert.equal(d.parseDateInput('131026'), '2026-10-13');
+  assert.equal(d.parseDateInput('10/13/2026'), null, 'kein amerikanisches Format');
+  assert.equal(d.formatDateInput('2026-10-13'), '13.10.2026');
+  assert.equal(d.formatDateInput('13.1O.2026'), '13.1O.2026', 'Fehleingabe bleibt stehen');
 });

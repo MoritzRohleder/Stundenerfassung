@@ -76,7 +76,7 @@ async function registerAndSetup(c, username = 'anna') {
   res = await c.get('/');
   assert.equal(res.location, '/einrichtung', 'ohne Einrichtung geht es nicht weiter');
   const params = new URLSearchParams({
-    state: 'NI', tracking_start: '2026-10-01', overtime_sign: 'plus', overtime_start: '2:00', vacation_days_default: '30', weekly: '40',
+    state: 'NI', tracking_start: '01.10.2026', overtime_sign: 'plus', overtime_start: '2:00', vacation_days_default: '30', weekly: '40',
   });
   for (const d of ['1', '2', '3', '4', '5']) params.append('workdays', d);
   res = await c.post('/einrichtung', params);
@@ -195,12 +195,20 @@ test('Ganzer Ablauf: Tag erfassen, Monat und Jahr ansehen', async (t) => {
   assert.match(res.text, /davon 8 geplant/);
 
   // Zeitraum mit anderer Arbeitszeit
-  const period = new URLSearchParams({ valid_from: '2027-02-01', valid_to: '2027-04-10', weekly: '20', note: 'Test' });
+  const period = new URLSearchParams({ valid_from: '01.02.2027', valid_to: '10.04.2027', weekly: '20', note: 'Test' });
   for (const d of ['1', '2', '3', '4', '5']) period.append('workdays', d);
   res = await c.post('/einstellungen/arbeitszeit/neu', period, '/einstellungen/arbeitszeit/neu');
   assert.equal(res.status, 302);
   res = await c.get('/tag/2027-02-01');
   assert.match(res.text, /4:00 h/);
+  res = await c.get('/einstellungen/arbeitszeit');
+  assert.match(res.text, /01\.02\.2027 – 10\.04\.2027/);
+  const editUrl = res.text.match(/href="(\/einstellungen\/arbeitszeit\/[0-9a-f-]{36}\/bearbeiten)"[^>]*>Bearbeiten<\/a>\s*<form/)[1];
+  res = await c.get(editUrl);
+  assert.match(res.text, /name="valid_from" value="01\.02\.2027"/, 'Datumsfeld zeigt deutsches Format');
+  res = await c.get('/einstellungen');
+  assert.match(res.text, /name="tracking_start" value="01\.10\.2026"/);
+  assert.doesNotMatch(res.text, /type="date"/);
 
   // Ungültige Adressen
   assert.equal((await c.get('/tag/2026-02-30')).status, 404);
