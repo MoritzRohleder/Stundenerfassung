@@ -2,6 +2,7 @@
 <article class="narrow">
   <h1>Einrichtung</h1>
   <p>Bevor es losgeht, brauche ich ein paar Angaben. Es gibt keine Vorbelegung – bitte alles selbst eintragen. Du kannst es später in den Einstellungen ändern.</p>
+  <p><small>Du hast schon eine Datensicherung? <a href="/daten/import">Sicherung importieren</a></small></p>
   <%- include('../partials/errors') %>
   <form method="post" action="/einrichtung">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">

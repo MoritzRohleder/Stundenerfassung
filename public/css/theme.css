@@ -87,7 +87,7 @@
 .radio-label { display: inline-flex; gap: 0.35rem; align-items: center; margin: 0; white-space: nowrap; }
 button.small { padding: 0.25rem 0.75rem; font-size: 0.9em; width: auto; }
 
-.subnav { display: flex; gap: 1.25rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.subnav { display: flex; gap: 1.25rem; margin-bottom: 1rem; flex-wrap: wrap; justify-content: flex-start; }
 .subnav a[aria-current='page'] { font-weight: 700; text-decoration: none; }
 
 .flash { padding: 0.6rem 1rem; border-radius: var(--pico-border-radius); border-left: 4px solid var(--se-plus); background: var(--pico-card-background-color); }
@@ -178,3 +178,6 @@ th.num, td.num { text-align: right; }
   header, .site-footer, .day-nav a, .subnav, form, .cards { display: none !important; }
   .month-table tr.off td { background: none; }
 }
+
+.radio-block { display: flex; gap: 0.5rem; align-items: flex-start; margin-bottom: 0.5rem; }
+.radio-block input { flex: none; margin-top: 0.2rem; }

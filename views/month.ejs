@@ -78,5 +78,10 @@
 </table>
 </div>
 <p><small class="muted">Saldo zählt nur abgelaufene Tage; heute nur Plusstunden. „a“ = automatische Pause. Klick auf einen Tag zum Erfassen.</small></p>
-<p><a href="/abwesenheit/neu">Urlaub für einen Zeitraum eintragen →</a></p>
+<p class="button-row">
+  <a href="/abwesenheit/neu">Urlaub für einen Zeitraum eintragen →</a>
+  <span class="muted">Export:</span>
+  <a href="/daten/export?format=pdf&amp;von=<%= view.year %>-<%= String(view.month).padStart(2, '0') %>&amp;bis=<%= view.year %>-<%= String(view.month).padStart(2, '0') %>">PDF</a>
+  <a href="/daten/export?format=excel&amp;von=<%= view.year %>-<%= String(view.month).padStart(2, '0') %>&amp;bis=<%= view.year %>-<%= String(view.month).padStart(2, '0') %>">Excel</a>
+</p>
 <%- include('partials/footer') %>

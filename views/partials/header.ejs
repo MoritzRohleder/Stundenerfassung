@@ -22,7 +22,7 @@
       <li><a href="/monat"<% if (path.startsWith('/monat')) { %> aria-current="page"<% } %>>Monat</a></li>
       <li><a href="/jahr"<% if (path.startsWith('/jahr')) { %> aria-current="page"<% } %>>Jahr</a></li>
       <li><a href="/heute" class="nav-today">+ Heute</a></li>
-      <li><a href="/einstellungen"<% if (path.startsWith('/einstellungen')) { %> aria-current="page"<% } %>>Einstellungen</a></li>
+      <li><a href="/einstellungen"<% if (path.startsWith('/einstellungen') || path.startsWith('/daten')) { %> aria-current="page"<% } %>>Einstellungen</a></li>
 <% } %>
 <% if (user) { %>
       <li>

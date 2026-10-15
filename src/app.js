@@ -13,6 +13,7 @@ const { loadUser, requireLogin, requireSetup } = require('./middleware/auth');
 const { authRoutes } = require('./routes/auth');
 const { mainRoutes } = require('./routes/main');
 const { settingsRoutes, settingsPagesRoutes } = require('./routes/settings');
+const { importRoutes, exportRoutes } = require('./routes/data');
 const viewHelpers = require('./utils/viewHelpers');
 const { todayISO } = require('./utils/date');
 const pkg = require('../package.json');
@@ -74,9 +75,11 @@ async function createApp(config = loadConfig(), { clock = { today: () => todayIS
   app.use(authRoutes({ repos, limiter }));
   app.use(requireLogin);
   app.use(settingsRoutes({ repos, clock }));
+  app.use(importRoutes({ repos, appVersion: pkg.version }));
   app.use(requireSetup);
   app.use(mainRoutes({ repos, clock }));
   app.use(settingsPagesRoutes({ repos, clock }));
+  app.use(exportRoutes({ repos, clock, appVersion: pkg.version }));
 
   app.use((req, res, next) => {
     const err = new Error('Seite nicht gefunden');

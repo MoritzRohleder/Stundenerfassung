@@ -1,10 +1,6 @@
 <%- include('../partials/header') %>
 <h1>Einstellungen</h1>
-<nav class="subnav">
-  <a href="/einstellungen">Allgemein</a>
-  <a href="/einstellungen/arbeitszeit">Arbeitszeit</a>
-  <a href="/einstellungen/urlaub" aria-current="page">Urlaub</a>
-</nav>
+<%- include('../partials/settings-nav') %>
 <article>
   <header><strong>Urlaubsanspruch je Jahr</strong></header>
   <p><small>Leer lassen = Standard (<%= fmt.days(user.vacation_days_default) %> Tage) bzw. automatischer Übertrag des Resturlaubs aus dem Vorjahr.</small></p>

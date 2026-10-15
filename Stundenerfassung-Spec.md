@@ -1,7 +1,7 @@
 # Stundenerfassung-Spec
 
 > Spezifikation für die Webanwendung **Stundenerfassung** zum privaten Nachhalten der eigenen Arbeitszeit.
-> Status: **v0.2** der Spezifikation – umgesetzt im Prototypen Version 0.1.0 (M0 bis M7).
+> Status: **v0.3** der Spezifikation – umgesetzt im Prototypen Version 0.2.0 (M0 bis M7 und Import/Export). Offen sind die Vorschläge F9 und F10 in [Kapitel 13.2](#132-offene-fragen).
 > Technisch angelehnt an das Haushaltsprojekt (Node.js, Express, EJS, Pico.css, JSON-Dateien, Docker), aber nicht 1:1.
 > Getroffene Entscheidungen stehen in [Kapitel 13.1](#131-entscheidungen), offene Punkte in [Kapitel 13.2](#132-offene-fragen) (im Text mit `❓` markiert).
 
@@ -340,7 +340,37 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 | ID | Anforderung | Prio |
 |----|-------------|------|
 | F-40 | Backup: Ordner `data/` kopieren genügt; automatische Sicherungskopie vor jedem Schreiben | M |
-| F-41 | CSV-Export eines Monats/Jahres | K |
+| F-41 | **Export für Excel** (`.xlsx`) für ganze Monate von … bis: Blatt „Tage“ (eine Zeile pro Tag mit Zeiten, Pause, Ist/Soll als Excel-Dauer `[h]:mm` und dezimal, Saldo, Abwesenheit, Feiertag, Hinweise, Notiz), Blatt „Monate“ (Summen und Konto am Monatsende), Blatt „Info“ (Nutzer, Zeitraum, Einstellungen) | S |
+| F-42 | **Export als PDF** (Stundennachweis): eine Seite pro Monat mit Summen, Tagestabelle und KW-Zeilen; bei mehreren Monaten zusätzlich eine Jahresübersicht je Jahr; Seitenzahlen | S |
+| F-43 | **Datensicherung** als JSON-Datei mit allen Daten des Nutzers (Format siehe 7.6) | S |
+| F-44 | **Import** einer Sicherungsdatei: „nur Tage übernehmen“ (gleiche Tage werden überschrieben, alles andere bleibt) oder „alles ersetzen“ (mit Bestätigung). Die Datei wird vorher vollständig geprüft; bei einem Fehler wird nichts übernommen. Vor der Einrichtung kann eine Sicherung statt der Einrichtung eingespielt werden | S |
+| F-45 | Schnell-Links „Export PDF/Excel“ in Monats- und Jahresübersicht | S |
+
+### 7.6 Format der Datensicherung
+
+```json
+{
+  "format": "stundenerfassung-export",
+  "version": 1,
+  "app_version": "0.2.0",
+  "exported_at": "2026-10-15T09:30:00.000Z",
+  "username": "moritz",
+  "settings": { "state": "NW", "tracking_start": "2026-09-01", "overtime_start_minutes": 195, "vacation_days_default": 30 },
+  "work_schedules": [
+    { "valid_from": null, "valid_to": null, "weekly_min": 2400, "workdays": [1, 2, 3, 4, 5], "note": "" },
+    { "valid_from": "2027-02-01", "valid_to": "2027-04-10", "weekly_min": 1200, "workdays": [1, 2, 3], "note": "Projektphase" }
+  ],
+  "vacation_entitlements": [ { "year": 2026, "days": 12.5, "carryover_days": null } ],
+  "days": [
+    { "date": "2026-10-07", "blocks": [ { "start": "07:30", "end": "12:00" }, { "start": "12:45", "end": "16:00" } ],
+      "manual_break_min": null, "absence_type": null, "absence_fraction": null, "note": "" }
+  ]
+}
+```
+
+- Uhrzeiten als `HH:MM`, Dauern in Minuten, Datum ISO – die Datei ist von Hand lesbar und bearbeitbar.
+- Beim Import gelten dieselben Regeln wie beim Erfassen (keine Überschneidungen, Pause nur bei einem Block, Krankheit nur ganztags, genau ein Standardmodell, keine überlappenden Zeiträume). Abwesenheiten an Tagen ohne Soll werden beim Import nicht abgelehnt.
+- `version` wird bei Änderungen am Format erhöht; ältere Versionen werden beim Import umgewandelt, unbekannte abgelehnt.
 
 ## 8. Abläufe
 
@@ -402,6 +432,10 @@ Navigation: **Übersicht** (Dashboard) · **Monat** · **Jahr** · **+ Heute** �
 | Arbeitszeitmodelle | `GET /einstellungen/arbeitszeit`, `GET/POST …/neu`, `…/:id/bearbeiten`, `POST …/:id/loeschen` | Standardmodell + Zeiträume |
 | Urlaubsansprüche | `GET/POST /einstellungen/urlaub` | Anspruch und Übertrag je Jahr |
 | Darstellung | `POST /einstellungen/darstellung` | Theme speichern (per `fetch`, ohne JS als Formular) |
+| Import & Export | `GET /daten` | Formulare für Export und Links zu Sicherung/Import |
+| Export | `GET /daten/export?format=excel\|pdf&von=JJJJ-MM&bis=JJJJ-MM` | auch `von_m`/`von_j`/`bis_m`/`bis_j` aus dem Formular |
+| Datensicherung | `GET /daten/sicherung` | JSON-Datei (F-43) |
+| Import | `GET/POST /daten/import` | Datei-Upload (multipart, max. 10 MB); auch vor der Einrichtung |
 | Health-Check | `GET /health` | `{"status":"ok"}` ohne Login |
 
 Änderungen und Löschungen laufen über `POST` (Post/Redirect/Get). Ungültige Datums- oder Jahresangaben in der URL → 404.
@@ -526,7 +560,8 @@ Stundenerfassung/
 - Schichten über Mitternacht.
 - Mehrere Arbeitgeber, Projekte oder Tätigkeiten pro Nutzer.
 - Stundenlohn / Verdienstberechnung.
-- PDF-Export, Weitergabe an den Arbeitgeber.
+- Direkte Weitergabe an den Arbeitgeber (PDF/Excel werden nur heruntergeladen).
+- Import aus Excel oder fremden Formaten (Import liest nur die eigene Sicherungsdatei).
 - Rundungsregeln (immer minutengenau).
 - Verfall von Resturlaub, Sonderregeln für Heiligabend/Silvester, regionale Feiertage (z. B. Augsburger Friedensfest, Mariä Himmelfahrt in Teilen Bayerns).
 - Teilen von Daten zwischen Nutzern, Rollen/Admin.
@@ -568,7 +603,41 @@ Stundenerfassung/
 
 ### 13.2 Offene Fragen
 
-Aktuell keine.
+#### F9 – Feiertage, die nicht angerechnet werden (stundenbasierte Verträge)
+
+**Situation:** Bei stundenbasierten Verträgen (z. B. Werkstudent mit 20 h/Woche, bezahlt wird nur geleistete Zeit) mindert ein Feiertag das Soll nicht – die Stunden müssen an einem anderen Tag der Woche nachgeholt werden. Heute setzt die Anwendung das Soll an Feiertagen immer auf 0.
+
+**Vorschlag:** Neues Feld am **Arbeitszeitmodell** (Standard und Zeiträume, damit ein Vertragswechsel abgebildet werden kann):
+
+| Feld | Werte | Default |
+|------|-------|---------|
+| `holidays_credited` | `true` = Feiertage mindern das Soll (wie heute) · `false` = Feiertage werden nicht angerechnet | `true` |
+
+Bei `false` hat ein Feiertag, der auf einen Arbeitstag fällt, das normale Tagessoll. Wer an dem Tag nicht arbeitet, hat dort ein Minus, das sich durch Mehrarbeit an den anderen Tagen ausgleicht. Der Tag wird weiterhin als Feiertag angezeigt, mit dem Zusatz „nicht angerechnet“. Am meisten bringt das zusammen mit F10 (Wochensoll), weil dann die Woche als Ganzes zählt.
+
+Zu klären: Gilt dasselbe für Urlaub und Krankheit (bei Werkstudenten meist bezahlt, also *angerechnet*)? Vorschlag: nein, nur Feiertage.
+
+#### F10 – Arbeitstage, die in einzelnen Wochen abweichen
+
+**Situation:** Bei z. B. einer 3-Tage-Woche (Mo, Di, Mi) wird in manchen Wochen an anderen Tagen gearbeitet (Mo, Do, Fr). Heute hätte dann der Mittwoch ein Minus und Do/Fr ein Plus – das gleicht sich im Wochensaldo zwar aus, sieht aber in der Monatsansicht falsch aus. Für jede solche Woche einen Zeitraum anzulegen, ist zu aufwendig.
+
+**Vorschlag:** Neues Feld am **Arbeitszeitmodell**: **Soll-Verteilung**
+
+| Wert | Bedeutung |
+|------|-----------|
+| `fixed` – feste Arbeitstage (Default, wie heute) | Das Soll liegt auf den gewählten Arbeitstagen. |
+| `weekly` – Wochensoll | Es gibt nur ein Soll **pro Woche** (z. B. 24 h). An welchen Tagen gearbeitet wird, ist egal. Die gewählten Arbeitstage dienen nur noch als „übliche Tage“ für die Umrechnung von Abwesenheiten. |
+
+Regeln für `weekly`:
+
+- Tageszeilen zeigen nur das Ist, keinen Tagessaldo. Soll und Saldo stehen in der **KW-Zeile**.
+- Wochensoll = Wochenarbeitszeit − Abzüge. Ein Abzug ist ein Urlaubs-/Krank-/Freistellungstag oder ein angerechneter Feiertag (F9) auf einem *üblichen* Tag, jeweils mit dem Tagessoll (Woche ÷ übliche Tage, halbe Tage zur Hälfte).
+- Ins Überstundenkonto geht der Wochensaldo **nach Ablauf der Woche** (Sonntag 24:00) – analog zu E-23. In der laufenden Woche zählt nur ein Plus.
+- Wochen über eine Monatsgrenze: Das Wochensoll wird nach den üblichen Tagen auf die Monate aufgeteilt (z. B. Mo–Mi im September, Do–So im Oktober bei Mo/Di/Mi als üblichen Tagen → ganz im September). ❓ Alternative: Die Woche gehört ganz zu dem Monat, in dem ihr Donnerstag liegt (ISO-Regel).
+
+**Alternative (kleiner):** Ein **Tagestausch** auf der Tagesseite („Arbeitstag getauscht mit …“). Das muss aber für jede abweichende Woche eingegeben werden und löst das Problem damit nicht – deshalb nicht empfohlen.
+
+F9 und F10 zusammen (`holidays_credited = false` + `weekly`) bilden den Werkstudenten-Fall vollständig ab: 20 h pro Woche, egal an welchen Tagen und egal, ob ein Feiertag dazwischen liegt.
 
 ## 14. Meilensteine
 
@@ -582,9 +651,10 @@ Aktuell keine.
 | M5 | **Übersichten** | F-30 bis F-35: Dashboard, Monat mit Wochenzeilen, Jahr mit Jahreswechsel. → **MVP fertig** |
 | M6 | **Komfort** | F-04, F-13, F-24 bis F-26: Passwort ändern, Urlaubsansprüche, Schnelleingabe, Hinweise, Urlaub für Zeitraum. |
 | M7 | **Betrieb** | Docker (10.8), CI/CD (10.9), README mit Anleitung für den Heimserver. |
-| M8 | **Ausbau** | F-06, F-36, F-37, F-41, Stempeluhr nach Bedarf. |
+| M7.1 | **Import & Export** | F-41 bis F-45: Excel, PDF, Datensicherung und Import. |
+| M8 | **Ausbau** | F-06, F-36, F-37, F9/F10, Stempeluhr nach Bedarf. |
 
-**Stand Version 0.1.0** (Prototyp): M0 bis M7 sind umgesetzt, F-37 (Druck-Stylesheet) in einfacher Form. Offen sind F-06 (Handbuch), F-36 (Diagramme), F-41 (CSV-Export) und die Stempeluhr.
+**Stand Version 0.2.0** (Prototyp): M0 bis M7.1 sind umgesetzt, F-37 (Druck-Stylesheet) in einfacher Form. Offen sind F-06 (Handbuch), F-36 (Diagramme), die Vorschläge F9/F10 und die Stempeluhr.
 
 Bekannte Einschränkungen:
 
@@ -603,3 +673,4 @@ Das Projekt steht unter der **GNU General Public License v3.0** (siehe [`LICENSE
 | v0.1 | Erster Entwurf auf Basis der Abstimmung: mehrere Zeitblöcke pro Tag, Pausenregel, Arbeitszeitmodelle mit Zeiträumen, Abwesenheiten mit halben Tagen, Feiertage nach Bundesland, Urlaubskonto, Monats- und Jahresübersicht, Technik angelehnt an das Haushaltsprojekt, Port 3002, Primärfarbe Indigo. |
 | v0.2 | Offene Fragen geklärt (E-19 bis E-26): keine halben Krankheitstage; offene Zeiträume; starre automatische Pause; Hinweis bei zu kurzen Lücken; Minusstunden erst nach Ablauf des Tages; Freizeitausgleich baut Überstunden ab; ein Bundesland pro Nutzer; keine Standardwerte, stattdessen Pflicht-Einrichtung nach der Registrierung. |
 | v0.2.1 | Datumsfelder als Textfelder im deutschen Format statt Browser-Datumsfelder (6.8). |
+| v0.3 | Import & Export (F-41 bis F-45, Format der Datensicherung in 7.6, Routen in Kap. 9); Vorschläge F9 (nicht angerechnete Feiertage) und F10 (Wochensoll für wechselnde Arbeitstage) als offene Fragen. |

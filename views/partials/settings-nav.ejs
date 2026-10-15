@@ -1,0 +1,6 @@
+<nav class="subnav">
+  <a href="/einstellungen"<% if (path === '/einstellungen') { %> aria-current="page"<% } %>>Allgemein</a>
+  <a href="/einstellungen/arbeitszeit"<% if (path.startsWith('/einstellungen/arbeitszeit')) { %> aria-current="page"<% } %>>Arbeitszeit</a>
+  <a href="/einstellungen/urlaub"<% if (path.startsWith('/einstellungen/urlaub')) { %> aria-current="page"<% } %>>Urlaub</a>
+  <a href="/daten"<% if (path.startsWith('/daten')) { %> aria-current="page"<% } %>>Import &amp; Export</a>
+</nav>

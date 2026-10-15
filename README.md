@@ -8,6 +8,7 @@ Prototyp einer selbst gehosteten Webanwendung zum **privaten Nachhalten der eige
 - Überstundenkonto und Urlaubskonto
 - Dashboard, Monatsübersicht mit Wochensummen, Jahresübersicht mit allen früheren Jahren
 - Jede Dauer als `7:30 h` und `7,50 h`; Hell/Dunkel pro Nutzer
+- Export als Excel (`.xlsx`) und PDF (Stundennachweis), Datensicherung als JSON und Import (Einstellungen → Import & Export)
 
 Die fachlichen Regeln stehen in der Spezifikation [`Stundenerfassung-Spec.md`](Stundenerfassung-Spec.md).
 
@@ -21,6 +22,8 @@ npm test
 ```
 
 Daten liegen im Ordner `data/` (JSON-Dateien). Nur dieser Ordner muss gesichert werden.
+
+Um Daten von einem Rechner auf einen anderen (z. B. vom lokalen Test auf den Heimserver) zu bringen: unter *Einstellungen → Import & Export* die Sicherung herunterladen und auf dem anderen System nach der Registrierung unter „Sicherung importieren“ einspielen.
 
 ## Auf dem Heimserver mit Docker
 

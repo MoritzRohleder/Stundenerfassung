@@ -26,18 +26,27 @@ function securityHeaders({ hsts }) {
   };
 }
 
+/** Prüft den CSRF-Token einer Anfrage; gibt einen Fehler oder null zurück. */
+function verifyCsrf(req) {
+  const sent = (req.body && req.body._csrf) || req.get('X-CSRF-Token') || '';
+  const expected = Buffer.from(req.session.csrfToken || '');
+  const actual = Buffer.from(String(sent));
+  if (expected.length && actual.length === expected.length && crypto.timingSafeEqual(actual, expected)) return null;
+  const err = new Error('Das Formular ist abgelaufen. Bitte lade die Seite neu und versuche es noch einmal.');
+  err.status = 403;
+  return err;
+}
+
+// Datei-Uploads (multipart) werden erst in der Route gelesen; dort wird der Token geprüft.
+const MULTIPART_ROUTES = new Set(['/daten/import']);
+
 /** CSRF-Schutz: Token in der Sitzung, Pflicht bei jedem POST. */
 function csrf(req, res, next) {
   if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(24).toString('hex');
   res.locals.csrfToken = req.session.csrfToken;
   if (req.method !== 'POST') return next();
-  const sent = (req.body && req.body._csrf) || req.get('X-CSRF-Token') || '';
-  const expected = Buffer.from(req.session.csrfToken);
-  const actual = Buffer.from(String(sent));
-  if (actual.length === expected.length && crypto.timingSafeEqual(actual, expected)) return next();
-  const err = new Error('Das Formular ist abgelaufen. Bitte lade die Seite neu und versuche es noch einmal.');
-  err.status = 403;
-  return next(err);
+  if (req.is('multipart/form-data') && MULTIPART_ROUTES.has(req.path)) return next();
+  return next(verifyCsrf(req) || undefined);
 }
 
 /** Nur interne Pfade als Rücksprungziel (kein Open Redirect). */
@@ -94,4 +103,4 @@ function createLoginLimiter({ now = () => Date.now() } = {}) {
   return { waitSeconds, fail, success };
 }
 
-module.exports = { securityHeaders, csrf, safeReturn, createLoginLimiter };
+module.exports = { securityHeaders, csrf, verifyCsrf, safeReturn, createLoginLimiter };

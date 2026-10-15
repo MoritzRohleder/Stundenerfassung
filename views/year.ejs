@@ -72,4 +72,9 @@
   </tfoot>
 </table>
 </div>
+<p class="button-row">
+  <span class="muted">Export <%= view.year %>:</span>
+  <a href="/daten/export?format=pdf&amp;von=<%= view.year %>-01&amp;bis=<%= view.year %>-12">PDF</a>
+  <a href="/daten/export?format=excel&amp;von=<%= view.year %>-01&amp;bis=<%= view.year %>-12">Excel</a>
+</p>
 <%- include('partials/footer') %>

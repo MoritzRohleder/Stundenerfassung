@@ -17,6 +17,7 @@ function createRepositories(storage) {
     forDay: (userId, date) => storage.findAll('time_blocks', (b) => b.user_id === userId && b.date === date),
     create: (data) => storage.insert('time_blocks', data),
     removeForDay: (userId, date) => storage.removeWhere('time_blocks', (b) => b.user_id === userId && b.date === date),
+    removeForUser: (userId) => storage.removeWhere('time_blocks', { user_id: userId }),
   };
 
   const days = {
@@ -26,6 +27,7 @@ function createRepositories(storage) {
     update: (id, changes) => storage.update('days', id, changes),
     remove: (id) => storage.remove('days', id),
     removeForDay: (userId, date) => storage.removeWhere('days', (d) => d.user_id === userId && d.date === date),
+    removeForUser: (userId) => storage.removeWhere('days', { user_id: userId }),
   };
 
   const workSchedules = {
@@ -34,6 +36,7 @@ function createRepositories(storage) {
     create: (data) => storage.insert('work_schedules', data),
     update: (id, changes) => storage.update('work_schedules', id, changes),
     remove: (id) => storage.remove('work_schedules', id),
+    removeForUser: (userId) => storage.removeWhere('work_schedules', { user_id: userId }),
   };
 
   const vacationEntitlements = {
@@ -42,6 +45,7 @@ function createRepositories(storage) {
     create: (data) => storage.insert('vacation_entitlements', data),
     update: (id, changes) => storage.update('vacation_entitlements', id, changes),
     remove: (id) => storage.remove('vacation_entitlements', id),
+    removeForUser: (userId) => storage.removeWhere('vacation_entitlements', { user_id: userId }),
   };
 
   return {
