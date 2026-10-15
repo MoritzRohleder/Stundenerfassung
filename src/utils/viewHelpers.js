@@ -3,7 +3,7 @@
 const time = require('./time');
 const date = require('./date');
 const { STATES } = require('../services/holidays');
-const { ABSENCE_TYPES } = require('../services/worktime');
+const { ABSENCE_TYPES, showsDaySoll, showsDaySaldo, isOffDay, holidayText } = require('../services/worktime');
 
 // Hilfsfunktionen für die Templates.
 
@@ -48,6 +48,10 @@ module.exports = {
     month: (m) => date.MONTHS[m - 1],
   },
   saldoClass,
+  showsDaySoll,
+  showsDaySaldo,
+  isOffDay,
+  holidayText,
   absenceLabel,
   absenceShort,
   monthUrl,

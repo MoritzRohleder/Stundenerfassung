@@ -4,6 +4,7 @@ Prototyp einer selbst gehosteten Webanwendung zum **privaten Nachhalten der eige
 
 - Mehrere Zeitblöcke pro Tag, Pause automatisch (30 min ab 6 h, 45 min ab 9 h), manuell oder aus den Lücken zwischen den Blöcken
 - Soll nach Wochenarbeitszeit, mit abweichenden Zeiträumen (z. B. vorübergehend 40 statt 20 Stunden)
+- Für flexible bzw. stundenbasierte Verträge: Wochensoll statt fester Arbeitstage und nicht angerechnete Feiertage
 - Gesetzliche Feiertage aller Bundesländer, Urlaub (auch halbe Tage), Krankheit, Freizeitausgleich
 - Überstundenkonto und Urlaubskonto
 - Dashboard, Monatsübersicht mit Wochensummen, Jahresübersicht mit allen früheren Jahren

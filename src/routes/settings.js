@@ -30,10 +30,13 @@ function generalForm(user) {
 }
 
 function scheduleForm(schedule) {
-  if (!schedule) return { weekly: '', workdays: [], valid_from: '', valid_to: '', note: '' };
+  // Neues Modell: Verteilung und Feiertage mit dem üblichen Fall vorbelegt (Spec F9/F10: Standard bleibt wie bisher).
+  if (!schedule) return { weekly: '', workdays: [], distribution: 'fixed', holidays_credited: 'ja', valid_from: '', valid_to: '', note: '' };
   return {
     weekly: formatHM(schedule.weekly_min),
     workdays: schedule.workdays,
+    distribution: schedule.distribution === 'weekly' ? 'weekly' : 'fixed',
+    holidays_credited: schedule.holidays_credited === false ? 'nein' : 'ja',
     valid_from: schedule.valid_from || '',
     valid_to: schedule.valid_to || '',
     note: schedule.note || '',
@@ -55,6 +58,8 @@ function rawSchedule(body) {
   return {
     weekly: body.weekly || '',
     workdays: wd,
+    distribution: body.distribution || '',
+    holidays_credited: body.holidays_credited || '',
     valid_from: body.valid_from || '',
     valid_to: body.valid_to || '',
     note: body.note || '',

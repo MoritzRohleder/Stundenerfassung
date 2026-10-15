@@ -69,6 +69,7 @@
     const modelTarget = Number(form.dataset.modelTarget);
     const holiday = form.dataset.holiday === '1';
     const tracked = form.dataset.tracked === '1';
+    const weekly = form.dataset.weekly === '1';
 
     addBtn.hidden = false;
     addBtn.addEventListener('click', () => {
@@ -148,8 +149,10 @@
       br.textContent = breakMin + ' min' + (source ? ' (' + source + ')' : '');
       set('break', br);
       set('ist', durationEl(ist));
-      set('soll', durationEl(soll));
-      set('saldo', durationEl(saldo, true));
+      if (!weekly) {
+        set('soll', durationEl(soll));
+        set('saldo', durationEl(saldo, true));
+      }
     }
 
     form.addEventListener('input', update);

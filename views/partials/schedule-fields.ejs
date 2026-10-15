@@ -14,13 +14,27 @@
   <input name="weekly" value="<%= schedule.weekly %>" inputmode="decimal" placeholder="z. B. 40, 38,5 oder 38:30" required>
 </label>
 <fieldset>
-  <legend>Arbeitstage</legend>
+  <legend>Verteilung des Solls</legend>
+  <label class="radio-block"><input type="radio" name="distribution" value="fixed"<% if (schedule.distribution === 'fixed') { %> checked<% } %>>
+    <span><strong>Feste Arbeitstage</strong> – das Soll liegt auf den gewählten Tagen (üblich)</span></label>
+  <label class="radio-block"><input type="radio" name="distribution" value="weekly"<% if (schedule.distribution === 'weekly') { %> checked<% } %>>
+    <span><strong>Wochensoll</strong> – nur die Woche zählt, an welchen Tagen gearbeitet wird, ist egal. Minusstunden zählen erst nach Ablauf der Woche.</span></label>
+</fieldset>
+<fieldset>
+  <legend>Arbeitstage <small class="muted">(beim Wochensoll: übliche Tage – für Urlaub, Krankheit und Feiertage)</small></legend>
   <div class="weekday-picker">
   <% WEEKDAYS_SHORT.forEach((label, i) => { %>
     <label><input type="checkbox" name="workdays" value="<%= i + 1 %>"<% if (schedule.workdays.includes(i + 1)) { %> checked<% } %>> <%= label %></label>
   <% }) %>
   </div>
   <small>Die Wochenarbeitszeit wird gleichmäßig auf die Arbeitstage verteilt.</small>
+</fieldset>
+<fieldset>
+  <legend>Feiertage</legend>
+  <label class="radio-block"><input type="radio" name="holidays_credited" value="ja"<% if (schedule.holidays_credited === 'ja') { %> checked<% } %>>
+    <span><strong>mindern das Soll</strong> – ein Feiertag an einem Arbeitstag zählt als erledigt (üblich)</span></label>
+  <label class="radio-block"><input type="radio" name="holidays_credited" value="nein"<% if (schedule.holidays_credited === 'nein') { %> checked<% } %>>
+    <span><strong>werden nicht angerechnet</strong> – die Stunden müssen an einem anderen Tag nachgeholt werden (z. B. stundenbasierter Vertrag als Werkstudent)</span></label>
 </fieldset>
 <% if (isPeriod) { %>
 <label>Notiz

@@ -54,7 +54,15 @@ async function buildExport(repos, user, appVersion) {
     },
     work_schedules: schedules
       .sort((a, b) => (a.valid_from || '').localeCompare(b.valid_from || ''))
-      .map((s) => ({ valid_from: s.valid_from, valid_to: s.valid_to, weekly_min: s.weekly_min, workdays: s.workdays, note: s.note || '' })),
+      .map((s) => ({
+        valid_from: s.valid_from,
+        valid_to: s.valid_to,
+        weekly_min: s.weekly_min,
+        workdays: s.workdays,
+        distribution: s.distribution === 'weekly' ? 'weekly' : 'fixed',
+        holidays_credited: s.holidays_credited !== false,
+        note: s.note || '',
+      })),
     vacation_entitlements: entitlements
       .sort((a, b) => a.year - b.year)
       .map((e) => ({ year: e.year, days: e.days ?? null, carryover_days: e.carryover_days ?? null })),
@@ -111,10 +119,15 @@ function parseImport(text) {
       valid_to: ws.valid_to || null,
       weekly_min: ws.weekly_min,
       workdays: Array.isArray(ws.workdays) ? [...new Set(ws.workdays)].sort() : [],
+      // Fehlen die Felder (ältere Sicherung), gilt der übliche Fall.
+      distribution: ws.distribution ?? 'fixed',
+      holidays_credited: ws.holidays_credited ?? true,
       note: typeof ws.note === 'string' ? ws.note.slice(0, 100) : '',
     };
     if (!Number.isInteger(item.weekly_min) || item.weekly_min < 0 || item.weekly_min > 10080) err(`${label}: ungültige Wochenarbeitszeit.`);
     if (item.workdays.length === 0 || item.workdays.some((d) => !Number.isInteger(d) || d < 1 || d > 7)) err(`${label}: ungültige Arbeitstage.`);
+    if (!['fixed', 'weekly'].includes(item.distribution)) err(`${label}: unbekannte Verteilung „${item.distribution}“.`);
+    if (typeof item.holidays_credited !== 'boolean') err(`${label}: holidays_credited muss true oder false sein.`);
     if (item.valid_from && !isValidISO(item.valid_from)) err(`${label}: ungültiges Startdatum.`);
     if (item.valid_to && !isValidISO(item.valid_to)) err(`${label}: ungültiges Enddatum.`);
     if (!item.valid_from && item.valid_to) err(`${label}: Enddatum ohne Startdatum.`);

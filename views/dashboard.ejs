@@ -5,7 +5,7 @@
 <div class="cards">
   <article class="card">
     <header>Heute · <%= fmt.weekdayLong(t.date) %>, <%= fmt.date(t.date) %></header>
-  <% if (t.holiday) { %><p class="tag tag-off"><%= t.holiday %></p><% } %>
+  <% if (t.holiday) { %><p class="tag <%= (t.holidayCredited || !t.target) ? 'tag-off' : 'tag-warning' %>"><%= holidayText(t) %></p><% } %>
   <% if (t.absenceType) { %><p class="tag tag-<%= t.absenceType %>"><%= absenceLabel(t.absenceType, t.absenceFraction) %></p><% } %>
   <% if (t.blocks.length) { %>
     <p class="blocks"><%= t.blocks.map((b) => `${fmt.clock(b.start_min)}–${fmt.clock(b.end_min)}`).join(', ') %></p>
@@ -14,10 +14,13 @@
   <% } %>
     <dl class="kv">
       <dt>Ist</dt><dd><%- include('partials/duration', { min: t.ist }) %></dd>
+    <% if (!t.weekly) { %>
       <dt>Soll</dt><dd><%- include('partials/duration', { min: t.soll }) %></dd>
       <dt>Saldo</dt><dd><%- include('partials/duration', { min: t.saldo, signed: true }) %></dd>
+    <% } %>
     </dl>
-  <% if (t.saldo < 0) { %><p><small class="muted">Minusstunden von heute zählen erst nach Ablauf des Tages.</small></p><% } %>
+  <% if (t.weekly) { %><p><small class="muted">Wochensoll: siehe Woche.</small></p>
+  <% } else if (t.saldo < 0) { %><p><small class="muted">Minusstunden von heute zählen erst nach Ablauf des Tages.</small></p><% } %>
     <a href="/tag/<%= t.date %>?zurueck=/" role="button">Heute erfassen</a>
   </article>
 
@@ -33,6 +36,9 @@
       <dt>Ist</dt><dd><%- include('partials/duration', { min: view.week.ist }) %></dd>
       <dt>Soll</dt><dd><%- include('partials/duration', { min: view.week.soll }) %></dd>
       <dt>Saldo</dt><dd><%- include('partials/duration', { min: view.week.saldo, signed: true }) %></dd>
+    <% if (t.weekly) { %>
+      <dt>Noch offen</dt><dd><%- include('partials/duration', { min: Math.max(0, view.week.soll - view.week.ist) }) %></dd>
+    <% } %>
     </dl>
     <p><small class="muted"><%= fmt.date(view.week.from) %> – <%= fmt.date(view.week.to) %></small></p>
   </article>

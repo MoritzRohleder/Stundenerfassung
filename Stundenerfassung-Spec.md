@@ -1,7 +1,7 @@
 # Stundenerfassung-Spec
 
 > Spezifikation für die Webanwendung **Stundenerfassung** zum privaten Nachhalten der eigenen Arbeitszeit.
-> Status: **v0.3** der Spezifikation – umgesetzt im Prototypen Version 0.2.0 (M0 bis M7 und Import/Export). Offen sind die Vorschläge F9 und F10 in [Kapitel 13.2](#132-offene-fragen).
+> Status: **v0.4** der Spezifikation – umgesetzt im Prototypen Version 0.3.0 (M0 bis M7.2).
 > Technisch angelehnt an das Haushaltsprojekt (Node.js, Express, EJS, Pico.css, JSON-Dateien, Docker), aber nicht 1:1.
 > Getroffene Entscheidungen stehen in [Kapitel 13.1](#131-entscheidungen), offene Punkte in [Kapitel 13.2](#132-offene-fragen) (im Text mit `❓` markiert).
 
@@ -164,7 +164,9 @@ Regeln:
 | `valid_from` | Datum | nein | Leer = **Standardmodell** (gilt immer, wenn kein Zeitraum greift) |
 | `valid_to` | Datum | nein | Letzter Tag des Zeitraums (einschließlich). Leer = **offen** („bis auf Weiteres“), nur beim zeitlich letzten Zeitraum erlaubt |
 | `weekly_min` | Integer ≥ 0 | ja | Wochenarbeitszeit in Minuten (40 h = 2400) |
-| `workdays` | Liste 1–7 | ja | Arbeitstage (ISO: 1 = Montag … 7 = Sonntag), mindestens einer |
+| `workdays` | Liste 1–7 | ja | Arbeitstage (ISO: 1 = Montag … 7 = Sonntag), mindestens einer. Beim Wochensoll die **üblichen Tage** |
+| `distribution` | Enum | ja | `fixed` = feste Arbeitstage (Default), `weekly` = **Wochensoll** – an welchen Tagen gearbeitet wird, ist egal (E-28, 6.4a) |
+| `holidays_credited` | Boolean | ja | `true` = Feiertage mindern das Soll (Default), `false` = **Feiertage werden nicht angerechnet**, z. B. bei stundenbasiertem Vertrag (E-27) |
 | `note` | Text | nein | z. B. „Projektphase“ |
 
 Regeln:
@@ -225,12 +227,13 @@ Ist-Zeit    = Blockzeit − abzuziehende Pause   (nie < 0)
 Modell(Tag)   = Zeitraum, der den Tag enthält, sonst Standardmodell
 Tagessoll     = Modell.weekly_min / Anzahl(Modell.workdays)     wenn Wochentag ∈ Modell.workdays
               = 0                                                sonst
-Soll(Tag)     = 0                                                wenn gesetzlicher Feiertag
+Soll(Tag)     = 0                                                wenn gesetzlicher Feiertag und Modell.holidays_credited
               = Tagessoll × (1 − Abwesenheitsanteil)             sonst
 ```
 
 - `Abwesenheitsanteil` = `absence_fraction` bei `vacation`, `sick`, `other_paid`; bei Freizeitausgleich (`comp_time`) **0** – das Soll bleibt bestehen, das fehlende Ist baut Überstunden ab.
 - Rundung: Das Tagessoll wird auf ganze Minuten gerundet (kaufmännisch). Beispiel 38,5 h an 5 Tagen = 462 min. Halber Tag Urlaub bei 462 min → 231 min.
+- **Feiertage nicht angerechnet** (E-27): Ein Feiertag auf einem Arbeitstag hat das normale Tagessoll; wer nicht arbeitet, hat ein Minus, das an anderen Tagen nachgeholt wird. Der Tag wird als „Feiertag (nicht angerechnet)“ angezeigt. Urlaub und Krankheit an so einem Tag sind möglich und mindern das Soll wie sonst. Für Urlaub und Krankheit gibt es keine solche Einstellung.
 - Tage vor `tracking_start` haben kein Soll (werden als „nicht erfasst“ angezeigt).
 - **Künftige Tage**: Ihr Soll wird angezeigt, zählt aber erst ab dem Tag selbst zum Saldo (siehe 6.4).
 
@@ -248,6 +251,22 @@ Saldo(Zeitraum)     = Σ Wertung(Tag) im Zeitraum
 - **Minusstunden zählen erst nach Ablauf des Tages** (E-23): Am laufenden Tag gehen nur Plusstunden ins Konto ein (wer heute schon über dem Soll ist, sieht das sofort); ein Minus des heutigen Tages wird erst ab 00:00 des Folgetages gebucht. So stehen morgens nicht gleich −8 h da.
 - In der Monats- und Jahresübersicht werden für den laufenden Monat **Soll abgelaufene Tage** (bis gestern) und **Soll gesamt (ganzer Monat)** getrennt gezeigt. Die Ist-Summe enthält immer alle erfassten Zeiten, auch die von heute.
 - Kontostand am Ende jedes Monats (für die Jahresübersicht) = Überstundenkonto bis zum Monatsletzten.
+
+### 6.4a Wochensoll (E-28)
+
+Bei Modellen mit `distribution = weekly` zählt die **Woche** (ISO, Mo–So):
+
+```
+Wochensoll  = Σ Soll(Tag) der Woche        (Soll(Tag) wie in 6.3 auf den üblichen Tagen)
+Wochensaldo = Σ Ist(Tag) der Woche − Wochensoll
+```
+
+- An welchen Tagen gearbeitet wird, ist egal; es gibt keinen Hinweis „Arbeit an einem freien Tag“.
+- Tageszeilen zeigen nur das Ist (Soll als „W“), Soll und Saldo stehen in der KW-Zeile. Die Tagesseite zeigt Ist, Wochensoll und „noch offen“ der Woche.
+- Abwesenheiten sind nur an üblichen Tagen möglich und mindern das Wochensoll um das Tagessoll (halbe Tage zur Hälfte).
+- **Überstundenkonto:** Nach Ablauf der Woche (Sonntag 24:00) zählt der Wochensaldo; rechnerisch wird jedem Tag Ist − Soll zugeordnet. In der laufenden Woche zählt nur ein Plus gegenüber dem ganzen Wochensoll, gebucht auf heute.
+- **Monatsgrenze:** Das Wochensoll wird nach den üblichen Tagen auf die Monate aufgeteilt, das Ist nach den Tagen, an denen gearbeitet wurde (E-29). Beispiel: übliche Tage Mo–Mi, KW 40/2026 (Mo 28.09.–So 04.10.) → das ganze Wochensoll liegt im September; Arbeit am Do 01.10. ist im Oktober ein Plus, im September fehlt sie. Die Woche als Ganzes ist ausgeglichen.
+- Zusammen mit `holidays_credited = false` bildet das z. B. einen Werkstudenten-Vertrag ab: 20 h pro Woche, egal an welchen Tagen und egal, ob ein Feiertag dazwischen liegt.
 
 ### 6.5 Woche
 
@@ -309,6 +328,7 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 | F-11 | Zeiträume mit abweichendem Arbeitszeitmodell anlegen, bearbeiten, löschen (keine Überschneidungen) | M |
 | F-12 | **Einrichtung** nach der Registrierung (Pflicht, ohne Vorbelegung): Bundesland, Beginn der Erfassung, Startsaldo Überstunden, Urlaubsanspruch pro Jahr, Standard-Arbeitszeitmodell. Bis dahin leitet jede Seite auf die Einrichtung um. Alle Werte später in den Einstellungen änderbar | M |
 | F-13 | Urlaubsanspruch: Standard pro Jahr und abweichender Anspruch bzw. manueller Übertrag je Jahr | S |
+| F-14 | Je Arbeitszeitmodell: **Verteilung** „feste Arbeitstage“ oder „Wochensoll“ und **Feiertage** „mindern das Soll“ oder „werden nicht angerechnet“; im Formular ist der übliche Fall vorausgewählt, in der Liste als Hinweis sichtbar | S |
 
 ### 7.3 Erfassen
 
@@ -340,7 +360,7 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 | ID | Anforderung | Prio |
 |----|-------------|------|
 | F-40 | Backup: Ordner `data/` kopieren genügt; automatische Sicherungskopie vor jedem Schreiben | M |
-| F-41 | **Export für Excel** (`.xlsx`) für ganze Monate von … bis: Blatt „Tage“ (eine Zeile pro Tag mit Zeiten, Pause, Ist/Soll als Excel-Dauer `[h]:mm` und dezimal, Saldo, Abwesenheit, Feiertag, Hinweise, Notiz), Blatt „Monate“ (Summen und Konto am Monatsende), Blatt „Info“ (Nutzer, Zeitraum, Einstellungen) | S |
+| F-41 | **Export für Excel** (`.xlsx`) für ganze Monate von … bis: Blatt „Tage“ (eine Zeile pro Tag mit Zeiten, Pause, Ist/Soll als Excel-Dauer `[h]:mm` und dezimal, Saldo, Abwesenheit, Feiertag, Hinweise, Notiz), Blatt „Monate“ (Summen und Konto am Monatsende), Blatt „Wochen“ (Ist, Soll, Saldo je KW), Blatt „Info“ (Nutzer, Zeitraum, Einstellungen) | S |
 | F-42 | **Export als PDF** (Stundennachweis): eine Seite pro Monat mit Summen, Tagestabelle und KW-Zeilen; bei mehreren Monaten zusätzlich eine Jahresübersicht je Jahr; Seitenzahlen | S |
 | F-43 | **Datensicherung** als JSON-Datei mit allen Daten des Nutzers (Format siehe 7.6) | S |
 | F-44 | **Import** einer Sicherungsdatei: „nur Tage übernehmen“ (gleiche Tage werden überschrieben, alles andere bleibt) oder „alles ersetzen“ (mit Bestätigung). Die Datei wird vorher vollständig geprüft; bei einem Fehler wird nichts übernommen. Vor der Einrichtung kann eine Sicherung statt der Einrichtung eingespielt werden | S |
@@ -357,8 +377,10 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
   "username": "moritz",
   "settings": { "state": "NW", "tracking_start": "2026-09-01", "overtime_start_minutes": 195, "vacation_days_default": 30 },
   "work_schedules": [
-    { "valid_from": null, "valid_to": null, "weekly_min": 2400, "workdays": [1, 2, 3, 4, 5], "note": "" },
-    { "valid_from": "2027-02-01", "valid_to": "2027-04-10", "weekly_min": 1200, "workdays": [1, 2, 3], "note": "Projektphase" }
+    { "valid_from": null, "valid_to": null, "weekly_min": 2400, "workdays": [1, 2, 3, 4, 5],
+      "distribution": "fixed", "holidays_credited": true, "note": "" },
+    { "valid_from": "2027-02-01", "valid_to": "2027-04-10", "weekly_min": 1200, "workdays": [1, 2, 3],
+      "distribution": "weekly", "holidays_credited": false, "note": "Werkstudent" }
   ],
   "vacation_entitlements": [ { "year": 2026, "days": 12.5, "carryover_days": null } ],
   "days": [
@@ -600,44 +622,15 @@ Stundenerfassung/
 | E-24 | Freizeitausgleich | Soll bleibt bestehen, Ist 0 → baut Überstunden ab. |
 | E-25 | Bundesland | Ein Bundesland pro Nutzer, nicht zeitraumbezogen. |
 | E-26 | Startwerte | Keine Standardwerte; der Nutzer trägt alles bei der Einrichtung nach der Registrierung ein. |
+| E-27 | Feiertage nicht angerechnet | Einstellung je Arbeitszeitmodell (Default: Feiertage mindern das Soll). Gilt nur für Feiertage, nicht für Urlaub/Krankheit. |
+| E-28 | Wochensoll | Einstellung je Arbeitszeitmodell „feste Arbeitstage“ (Default) oder „Wochensoll“; Minus erst nach Ablauf der Woche. |
+| E-29 | Woche über Monatsgrenze | Aufteilung nach den üblichen Tagen. Alternative für später: ganze Woche zum Monat ihres Donnerstags (ISO). |
 
 ### 13.2 Offene Fragen
 
-#### F9 – Feiertage, die nicht angerechnet werden (stundenbasierte Verträge)
+Aktuell keine.
 
-**Situation:** Bei stundenbasierten Verträgen (z. B. Werkstudent mit 20 h/Woche, bezahlt wird nur geleistete Zeit) mindert ein Feiertag das Soll nicht – die Stunden müssen an einem anderen Tag der Woche nachgeholt werden. Heute setzt die Anwendung das Soll an Feiertagen immer auf 0.
-
-**Vorschlag:** Neues Feld am **Arbeitszeitmodell** (Standard und Zeiträume, damit ein Vertragswechsel abgebildet werden kann):
-
-| Feld | Werte | Default |
-|------|-------|---------|
-| `holidays_credited` | `true` = Feiertage mindern das Soll (wie heute) · `false` = Feiertage werden nicht angerechnet | `true` |
-
-Bei `false` hat ein Feiertag, der auf einen Arbeitstag fällt, das normale Tagessoll. Wer an dem Tag nicht arbeitet, hat dort ein Minus, das sich durch Mehrarbeit an den anderen Tagen ausgleicht. Der Tag wird weiterhin als Feiertag angezeigt, mit dem Zusatz „nicht angerechnet“. Am meisten bringt das zusammen mit F10 (Wochensoll), weil dann die Woche als Ganzes zählt.
-
-Zu klären: Gilt dasselbe für Urlaub und Krankheit (bei Werkstudenten meist bezahlt, also *angerechnet*)? Vorschlag: nein, nur Feiertage.
-
-#### F10 – Arbeitstage, die in einzelnen Wochen abweichen
-
-**Situation:** Bei z. B. einer 3-Tage-Woche (Mo, Di, Mi) wird in manchen Wochen an anderen Tagen gearbeitet (Mo, Do, Fr). Heute hätte dann der Mittwoch ein Minus und Do/Fr ein Plus – das gleicht sich im Wochensaldo zwar aus, sieht aber in der Monatsansicht falsch aus. Für jede solche Woche einen Zeitraum anzulegen, ist zu aufwendig.
-
-**Vorschlag:** Neues Feld am **Arbeitszeitmodell**: **Soll-Verteilung**
-
-| Wert | Bedeutung |
-|------|-----------|
-| `fixed` – feste Arbeitstage (Default, wie heute) | Das Soll liegt auf den gewählten Arbeitstagen. |
-| `weekly` – Wochensoll | Es gibt nur ein Soll **pro Woche** (z. B. 24 h). An welchen Tagen gearbeitet wird, ist egal. Die gewählten Arbeitstage dienen nur noch als „übliche Tage“ für die Umrechnung von Abwesenheiten. |
-
-Regeln für `weekly`:
-
-- Tageszeilen zeigen nur das Ist, keinen Tagessaldo. Soll und Saldo stehen in der **KW-Zeile**.
-- Wochensoll = Wochenarbeitszeit − Abzüge. Ein Abzug ist ein Urlaubs-/Krank-/Freistellungstag oder ein angerechneter Feiertag (F9) auf einem *üblichen* Tag, jeweils mit dem Tagessoll (Woche ÷ übliche Tage, halbe Tage zur Hälfte).
-- Ins Überstundenkonto geht der Wochensaldo **nach Ablauf der Woche** (Sonntag 24:00) – analog zu E-23. In der laufenden Woche zählt nur ein Plus.
-- Wochen über eine Monatsgrenze: Das Wochensoll wird nach den üblichen Tagen auf die Monate aufgeteilt (z. B. Mo–Mi im September, Do–So im Oktober bei Mo/Di/Mi als üblichen Tagen → ganz im September). ❓ Alternative: Die Woche gehört ganz zu dem Monat, in dem ihr Donnerstag liegt (ISO-Regel).
-
-**Alternative (kleiner):** Ein **Tagestausch** auf der Tagesseite („Arbeitstag getauscht mit …“). Das muss aber für jede abweichende Woche eingegeben werden und löst das Problem damit nicht – deshalb nicht empfohlen.
-
-F9 und F10 zusammen (`holidays_credited = false` + `weekly`) bilden den Werkstudenten-Fall vollständig ab: 20 h pro Woche, egal an welchen Tagen und egal, ob ein Feiertag dazwischen liegt.
+Für später vorgemerkt: Woche über eine Monatsgrenze ganz dem Monat ihres Donnerstags zuordnen (ISO-Regel) statt Aufteilung nach üblichen Tagen (E-29).
 
 ## 14. Meilensteine
 
@@ -652,9 +645,10 @@ F9 und F10 zusammen (`holidays_credited = false` + `weekly`) bilden den Werkstud
 | M6 | **Komfort** | F-04, F-13, F-24 bis F-26: Passwort ändern, Urlaubsansprüche, Schnelleingabe, Hinweise, Urlaub für Zeitraum. |
 | M7 | **Betrieb** | Docker (10.8), CI/CD (10.9), README mit Anleitung für den Heimserver. |
 | M7.1 | **Import & Export** | F-41 bis F-45: Excel, PDF, Datensicherung und Import. |
-| M8 | **Ausbau** | F-06, F-36, F-37, F9/F10, Stempeluhr nach Bedarf. |
+| M7.2 | **Flexible Verträge** | F-14: Wochensoll und nicht angerechnete Feiertage (E-27 bis E-29). |
+| M8 | **Ausbau** | F-06, F-36, F-37, Stempeluhr nach Bedarf. |
 
-**Stand Version 0.2.0** (Prototyp): M0 bis M7.1 sind umgesetzt, F-37 (Druck-Stylesheet) in einfacher Form. Offen sind F-06 (Handbuch), F-36 (Diagramme), die Vorschläge F9/F10 und die Stempeluhr.
+**Stand Version 0.3.0** (Prototyp): M0 bis M7.2 sind umgesetzt, F-37 (Druck-Stylesheet) in einfacher Form. Offen sind F-06 (Handbuch), F-36 (Diagramme) und die Stempeluhr.
 
 Bekannte Einschränkungen:
 
@@ -674,3 +668,4 @@ Das Projekt steht unter der **GNU General Public License v3.0** (siehe [`LICENSE
 | v0.2 | Offene Fragen geklärt (E-19 bis E-26): keine halben Krankheitstage; offene Zeiträume; starre automatische Pause; Hinweis bei zu kurzen Lücken; Minusstunden erst nach Ablauf des Tages; Freizeitausgleich baut Überstunden ab; ein Bundesland pro Nutzer; keine Standardwerte, stattdessen Pflicht-Einrichtung nach der Registrierung. |
 | v0.2.1 | Datumsfelder als Textfelder im deutschen Format statt Browser-Datumsfelder (6.8). |
 | v0.3 | Import & Export (F-41 bis F-45, Format der Datensicherung in 7.6, Routen in Kap. 9); Vorschläge F9 (nicht angerechnete Feiertage) und F10 (Wochensoll für wechselnde Arbeitstage) als offene Fragen. |
+| v0.4 | F9/F10 entschieden und umgesetzt: Arbeitszeitmodell mit `distribution` (feste Arbeitstage / Wochensoll, 6.4a) und `holidays_credited` (E-27 bis E-29); Excel-Blatt „Wochen“. |

@@ -1,10 +1,10 @@
 'use strict';
 
 const express = require('express');
-const { isValidISO, addDays, parseDateInput, eachDay, diffDays } = require('../utils/date');
+const { isValidISO, addDays, parseDateInput, eachDay, diffDays, isoWeekday, isoWeek } = require('../utils/date');
 const { formatClock } = require('../utils/time');
 const { loadContext, monthView, yearView, dashboardView } = require('../services/overview');
-const { dayResult, hasTarget, modelTarget } = require('../services/worktime');
+const { dayResult, hasTarget, modelTarget, summarize } = require('../services/worktime');
 const { parseDayForm, saveDay, clearDay } = require('../services/dayEntry');
 const { vacationYear } = require('../services/vacation');
 const { safeReturn } = require('../middleware/security');
@@ -54,7 +54,14 @@ function mainRoutes({ repos, clock }) {
       canHaveAbsence: hasTarget(ctx, date),
       modelTarget: modelTarget(ctx, date),
       vacation: vacationYear(ctx, Number(date.slice(0, 4))),
+      week: result.weekly ? weekSummary(ctx, date) : null,
     });
+  }
+
+  function weekSummary(ctx, date) {
+    const monday = addDays(date, 1 - isoWeekday(date));
+    const sum = summarize(ctx, monday, addDays(monday, 6));
+    return { ...sum, number: isoWeek(date).week, open: Math.max(0, sum.soll - sum.ist) };
   }
 
   router.get('/heute', (req, res) => res.redirect(`/tag/${clock.today()}`));

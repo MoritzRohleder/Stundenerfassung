@@ -47,17 +47,17 @@
       <td></td>
     </tr>
   <% } else {
-       const off = row.holiday || !row.isWorkday;
+       const off = isOffDay(row);
        const cls = [off ? 'off' : '', row.status === 'today' ? 'today' : '', row.status === 'future' ? 'future' : ''].filter(Boolean).join(' '); %>
     <tr<% if (cls) { %> class="<%= cls %>"<% } %>>
       <td class="date-cell"><a href="/tag/<%= row.date %>?zurueck=<%= encodeURIComponent(currentPath) %>"><span class="wd"><%= fmt.weekday(row.date) %></span> <%= fmt.dateShort(row.date) %></a></td>
       <td><% if (row.blocks.length) { %><%= row.blocks.map((b) => `${fmt.clock(b.start_min)}–${fmt.clock(b.end_min)}`).join(', ') %><% } %></td>
       <td class="num pause-cell"><% if (row.breakSource) { %><%= row.breakMin %> min<% if (row.breakSource === 'auto') { %><span class="muted" title="automatisch"> a</span><% } %><% } %></td>
       <td class="num"><% if (row.ist || row.blocks.length) { %><%- include('partials/duration', { min: row.ist }) %><% } %></td>
-      <td class="num"><% if (row.soll) { %><%- include('partials/duration', { min: row.soll }) %><% } %></td>
-      <td class="num"><% if (row.tracked && (row.soll || row.ist) && (row.status === 'past' || (row.status === 'today' && row.blocks.length))) { %><%- include('partials/duration', { min: row.saldo, signed: true }) %><% } %></td>
+      <td class="num"><% if (showsDaySoll(row)) { %><%- include('partials/duration', { min: row.soll }) %><% } else if (row.weekly && row.soll) { %><span class="muted" title="Wochensoll – Soll und Saldo stehen in der KW-Zeile">W</span><% } %></td>
+      <td class="num"><% if (showsDaySaldo(row)) { %><%- include('partials/duration', { min: row.saldo, signed: true }) %><% } %></td>
       <td class="info-cell">
-        <% if (row.holiday) { %><span class="tag tag-off"><%= row.holiday %></span><% } %>
+        <% if (row.holiday) { %><span class="tag <%= (row.holidayCredited || !row.target) ? 'tag-off' : 'tag-warning' %>"><%= holidayText(row) %></span><% } %>
         <% if (row.absenceType) { %><span class="tag tag-<%= row.absenceType %>" title="<%= absenceLabel(row.absenceType, row.absenceFraction) %>"><%= absenceLabel(row.absenceType, row.absenceFraction) %></span><% } %>
         <% row.hints.forEach((h) => { %><span class="tag tag-warning" title="<%= h %>">⚠ <%= h %></span><% }) %>
         <% if (row.note) { %><span class="note"><%= row.note %></span><% } %>
@@ -77,7 +77,7 @@
   </tfoot>
 </table>
 </div>
-<p><small class="muted">Saldo zählt nur abgelaufene Tage; heute nur Plusstunden. „a“ = automatische Pause. Klick auf einen Tag zum Erfassen.</small></p>
+<p><small class="muted">Saldo zählt nur abgelaufene Tage; heute nur Plusstunden. „a“ = automatische Pause, „W“ = Wochensoll (Soll und Saldo in der KW-Zeile, Minus erst nach Ablauf der Woche). Klick auf einen Tag zum Erfassen.</small></p>
 <p class="button-row">
   <a href="/abwesenheit/neu">Urlaub für einen Zeitraum eintragen →</a>
   <span class="muted">Export:</span>

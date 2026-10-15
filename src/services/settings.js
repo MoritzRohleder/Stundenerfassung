@@ -55,7 +55,17 @@ function parseSchedule(body, { isPeriod, schedules = [], id = null }) {
     .sort();
   if (workdays.length === 0) errors.push('Bitte mindestens einen Arbeitstag auswählen.');
 
-  const values = { weekly_min: weekly, workdays, note: String(body.note || '').trim().slice(0, 100) };
+  // Ohne Angabe gilt der übliche Fall: feste Arbeitstage, Feiertage mindern das Soll (F9/F10).
+  const distribution = body.distribution === 'weekly' ? 'weekly' : 'fixed';
+  const credited = body.holidays_credited !== 'nein';
+
+  const values = {
+    weekly_min: weekly,
+    workdays,
+    distribution,
+    holidays_credited: credited,
+    note: String(body.note || '').trim().slice(0, 100),
+  };
 
   if (isPeriod) {
     values.valid_from = parseDateInput(body.valid_from);

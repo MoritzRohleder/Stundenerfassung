@@ -5,8 +5,9 @@
 <article>
   <header><strong>Standardmodell</strong> – gilt immer, wenn kein Zeitraum greift</header>
 <% if (standard) { %>
-  <p><%= fmt.hm(standard.weekly_min) %> h pro Woche an <%= standard.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ') %>
+  <p><%= fmt.hm(standard.weekly_min) %> h pro Woche, <%= standard.distribution === 'weekly' ? 'übliche Tage' : 'an' %> <%= standard.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ') %>
      (<%= fmt.hm(Math.round(standard.weekly_min / standard.workdays.length)) %> h pro Arbeitstag)</p>
+  <p><%- include('../partials/schedule-tags', { s: standard }) %></p>
   <a href="/einstellungen/arbeitszeit/<%= standard.id %>/bearbeiten" role="button" class="secondary">Bearbeiten</a>
   <p><small class="hint">Achtung: Eine Änderung am Standardmodell wirkt auch rückwirkend auf alle Tage ohne Zeitraum. Für eine dauerhafte Änderung ab einem Datum lege besser einen Zeitraum ohne Enddatum an.</small></p>
 <% } %>
@@ -25,7 +26,7 @@
       <tr<% if (p.valid_from <= today && (!p.valid_to || today <= p.valid_to)) { %> class="current-row"<% } %>>
         <td><%= fmt.date(p.valid_from) %> – <%= p.valid_to ? fmt.date(p.valid_to) : 'bis auf Weiteres' %></td>
         <td><%= fmt.hm(p.weekly_min) %> h</td>
-        <td><%= p.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ') %></td>
+        <td><%= p.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ') %> <%- include('../partials/schedule-tags', { s: p }) %></td>
         <td><%= p.note %></td>
         <td class="actions">
           <a href="/einstellungen/arbeitszeit/<%= p.id %>/bearbeiten">Bearbeiten</a>

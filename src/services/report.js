@@ -2,10 +2,10 @@
 
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { MONTHS, WEEKDAYS_SHORT, formatDE, formatDEShort, isoWeek } = require('../utils/date');
+const { MONTHS, WEEKDAYS_SHORT, formatDE, formatDEShort, isoWeek, toISO, daysInMonth, startOfWeek, addDays } = require('../utils/date');
 const { formatHM, formatDec, formatSignedHM, formatSignedDec, formatClock, formatDays } = require('../utils/time');
 const { monthView, yearView } = require('./overview');
-const { ABSENCE_TYPES } = require('./worktime');
+const { ABSENCE_TYPES, showsDaySoll, showsDaySaldo, isOffDay, holidayText, summarize } = require('./worktime');
 const { STATES } = require('./holidays');
 const { periods, defaultSchedule } = require('./schedules');
 
@@ -37,10 +37,6 @@ function monthRange(from, to) {
   return list;
 }
 
-/** Ob in einer Tageszeile ein Saldo angezeigt wird (wie in der Monatsübersicht). */
-function showsSaldo(r) {
-  return r.tracked && (r.soll || r.ist) && (r.status === 'past' || (r.status === 'today' && r.blocks.length > 0));
-}
 
 function absenceText(r) {
   if (!r.absenceType) return '';
@@ -79,6 +75,13 @@ function fileBase(months) {
   const last = months[months.length - 1];
   const p = (m) => `${m.year}-${String(m.month).padStart(2, '0')}`;
   return `stundenerfassung_${p(first)}${months.length > 1 ? `_bis_${p(last)}` : ''}`;
+}
+
+function scheduleText(s) {
+  const days = s.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ');
+  const parts = [`${formatHM(s.weekly_min)} h/Woche`, s.distribution === 'weekly' ? `Wochensoll (übliche Tage ${days})` : days];
+  if (s.holidays_credited === false) parts.push('Feiertage nicht angerechnet');
+  return parts.join(', ');
 }
 
 // --- Excel -------------------------------------------------------------------
@@ -122,7 +125,7 @@ async function excelReport(ctx, months) {
   for (const mv of report.months) {
     for (const row of mv.rows) {
       if (row.kind === 'week') continue;
-      const saldo = showsSaldo(row);
+      const saldo = showsDaySaldo(row);
       const r = ws.addRow({
         date: excelDate(row.date),
         wd: WEEKDAYS_SHORT[row.weekday - 1],
@@ -132,16 +135,16 @@ async function excelReport(ctx, months) {
         pauseType: row.breakSource ? breakTypes[row.breakSource] : '',
         ist: row.blocks.length ? row.ist / 1440 : null,
         istDec: row.blocks.length ? Math.round((row.ist / 60) * 100) / 100 : null,
-        soll: row.soll ? row.soll / 1440 : null,
-        sollDec: row.soll ? Math.round((row.soll / 60) * 100) / 100 : null,
+        soll: showsDaySoll(row) ? row.soll / 1440 : null,
+        sollDec: showsDaySoll(row) ? Math.round((row.soll / 60) * 100) / 100 : null,
         saldo: saldo ? formatSignedHM(row.saldo).replace('−', '-') : '',
         saldoDec: saldo ? Math.round((row.saldo / 60) * 100) / 100 : null,
         absence: absenceText(row),
-        holiday: row.holiday || '',
+        holiday: holidayText(row),
         hints: row.hints.join('; '),
         note: row.note,
       });
-      if (row.holiday || !row.isWorkday) r.font = { color: { argb: 'FF64748B' } };
+      if (isOffDay(row)) r.font = { color: { argb: 'FF64748B' } };
     }
   }
   ws.autoFilter = { from: 'A1', to: 'P1' };
@@ -178,6 +181,40 @@ async function excelReport(ctx, months) {
     });
   }
 
+  // Wochen (ganze ISO-Wochen, am Rand auf den Zeitraum gekürzt)
+  const wk = wb.addWorksheet('Wochen', { views: [{ state: 'frozen', ySplit: 1 }] });
+  wk.columns = [
+    { header: 'KW', key: 'kw', width: 9 },
+    { header: 'Von', key: 'from', width: 11, style: { numFmt: 'dd.mm.yyyy' } },
+    { header: 'Bis', key: 'to', width: 11, style: { numFmt: 'dd.mm.yyyy' } },
+    { header: 'Ist', key: 'ist', width: 10, style: { numFmt: DUR_FMT } },
+    { header: 'Ist (h)', key: 'istDec', width: 10, style: { numFmt: DEC_FMT } },
+    { header: 'Soll', key: 'soll', width: 10, style: { numFmt: DUR_FMT } },
+    { header: 'Soll (h)', key: 'sollDec', width: 10, style: { numFmt: DEC_FMT } },
+    { header: 'Saldo (h)', key: 'saldoDec', width: 10, style: { numFmt: '+0.00;-0.00;0.00' } },
+  ];
+  wk.getRow(1).font = { bold: true };
+  const rangeFrom = toISO(months[0].year, months[0].month, 1);
+  const last = months[months.length - 1];
+  const rangeTo = toISO(last.year, last.month, daysInMonth(last.year, last.month));
+  for (let monday = startOfWeek(rangeFrom); monday <= rangeTo; monday = addDays(monday, 7)) {
+    const from = monday < rangeFrom ? rangeFrom : monday;
+    const sunday = addDays(monday, 6);
+    const to = sunday > rangeTo ? rangeTo : sunday;
+    const w = summarize(ctx, from, to);
+    const { year, week } = isoWeek(monday);
+    wk.addRow({
+      kw: `${year}-${String(week).padStart(2, '0')}`,
+      from: excelDate(from),
+      to: excelDate(to),
+      ist: w.ist / 1440,
+      istDec: dec(w.ist),
+      soll: w.soll / 1440,
+      sollDec: dec(w.soll),
+      saldoDec: dec(w.saldo),
+    });
+  }
+
   // Info
   const info = wb.addWorksheet('Info');
   info.columns = [{ key: 'k', width: 28 }, { key: 'v', width: 50 }];
@@ -189,13 +226,13 @@ async function excelReport(ctx, months) {
     ['Bundesland', STATES[ctx.user.state] || ''],
     ['Beginn der Erfassung', ctx.user.tracking_start ? formatDE(ctx.user.tracking_start) : ''],
     ['Startsaldo Überstunden', `${formatSignedHM(ctx.user.overtime_start_minutes || 0)} h`],
-    ['Standardmodell', std ? `${formatHM(std.weekly_min)} h/Woche, ${std.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ')}` : ''],
+    ['Standardmodell', std ? scheduleText(std) : ''],
     ...periods(ctx.schedules).map((p) => [
       `Zeitraum ab ${formatDE(p.valid_from)}`,
-      `bis ${p.valid_to ? formatDE(p.valid_to) : 'auf Weiteres'}: ${formatHM(p.weekly_min)} h/Woche, ${p.workdays.map((d) => WEEKDAYS_SHORT[d - 1]).join(', ')}`,
+      `bis ${p.valid_to ? formatDE(p.valid_to) : 'auf Weiteres'}: ${scheduleText(p)}`,
     ]),
     [],
-    ['Hinweis', 'Ist und Soll als Excel-Dauer [h]:mm und dezimal; Saldo zählt nur abgelaufene Tage.'],
+    ['Hinweis', 'Ist und Soll als Excel-Dauer [h]:mm und dezimal; Saldo zählt nur abgelaufene Tage. Beim Wochensoll stehen Soll und Saldo im Blatt „Wochen“.'],
   ];
   for (const r of rows) info.addRow({ k: r[0], v: r[1] });
   info.getColumn('k').font = { bold: true };
@@ -301,16 +338,16 @@ function pdfReport(ctx, months) {
         );
         continue;
       }
-      const info = [r.holiday, absenceText(r), ...r.hints.map((h) => `Hinweis: ${h}`), r.note].filter(Boolean).join(' · ');
-      const off = r.holiday || !r.isWorkday;
+      const info = [holidayText(r), absenceText(r), ...r.hints.map((h) => `Hinweis: ${h}`), r.note].filter(Boolean).join(' · ');
+      const off = isOffDay(r);
       row(
         {
           date: `${WEEKDAYS_SHORT[r.weekday - 1]} ${formatDEShort(r.date)}`,
           blocks: blocksText(r),
           pause: breakText(r),
           ist: r.blocks.length ? dur(r.ist) : '',
-          soll: r.soll ? dur(r.soll) : '',
-          saldo: showsSaldo(r) ? signed(r.saldo) : '',
+          soll: showsDaySoll(r) ? dur(r.soll) : r.weekly && r.soll ? 'W' : '',
+          saldo: showsDaySaldo(r) ? signed(r.saldo) : '',
           info,
         },
         { shade: off ? '#f1f5f9' : null, color: off ? GREY : '#000' },
@@ -379,4 +416,4 @@ function pdfReport(ctx, months) {
   return done.then((buffer) => ({ buffer, filename: `${fileBase(months)}.pdf` }));
 }
 
-module.exports = { monthRange, excelReport, pdfReport, showsSaldo };
+module.exports = { monthRange, excelReport, pdfReport };

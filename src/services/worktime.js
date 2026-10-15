@@ -47,14 +47,30 @@ function modelTarget(ctx, iso) {
   return dailyTarget(scheduleFor(ctx.schedules, iso), isoWeekday(iso));
 }
 
-/** Ob an einem Tag überhaupt Soll anfällt (Arbeitstag, kein Feiertag). */
-function hasTarget(ctx, iso) {
-  return modelTarget(ctx, iso) > 0 && !holidayName(iso, ctx.user.state);
+/** Ob ein Modell Feiertage auf das Soll anrechnet (F9, Default ja). */
+function holidaysCredited(schedule) {
+  return !schedule || schedule.holidays_credited !== false;
 }
 
-/** Alle Werte eines Tages. */
-function dayResult(ctx, iso) {
-  if (ctx.cache.has(iso)) return ctx.cache.get(iso);
+/** Ob ein Modell ein Wochensoll statt fester Arbeitstage hat (F10, Default fest). */
+function isWeekly(schedule) {
+  return Boolean(schedule && schedule.distribution === 'weekly');
+}
+
+/**
+ * Ob an einem Tag überhaupt Soll anfällt (üblicher Arbeitstag und kein angerechneter Feiertag).
+ * Nur an solchen Tagen sind Abwesenheiten möglich.
+ */
+function hasTarget(ctx, iso) {
+  const schedule = scheduleFor(ctx.schedules, iso);
+  if (dailyTarget(schedule, isoWeekday(iso)) <= 0) return false;
+  return !(holidayName(iso, ctx.user.state) && holidaysCredited(schedule));
+}
+
+/** Werte eines Tages ohne die Wertung fürs Überstundenkonto. */
+function dayBase(ctx, iso) {
+  const key = `base-${iso}`;
+  if (ctx.cache.has(key)) return ctx.cache.get(key);
   const { user, today } = ctx;
   const blocks = ctx.blocksByDate.get(iso) || [];
   const day = ctx.daysByDate.get(iso) || null;
@@ -66,13 +82,17 @@ function dayResult(ctx, iso) {
   const schedule = scheduleFor(ctx.schedules, iso);
   const target = dailyTarget(schedule, weekday);
   const isWorkday = Boolean(schedule && schedule.workdays.includes(weekday));
+  const weekly = isWeekly(schedule);
+  const credited = holidaysCredited(schedule);
   const tracked = Boolean(user.tracking_start && iso >= user.tracking_start);
 
   const absenceType = day && day.absence_type ? day.absence_type : null;
   const absenceFraction = absenceType ? day.absence_fraction : 0;
   const share = absenceType && ABSENCE_TYPES[absenceType].reducesTarget ? absenceFraction : 0;
 
-  const soll = !tracked || holiday ? 0 : Math.round(target * (1 - share));
+  // Beim Wochensoll liegt das Soll rechnerisch auf den üblichen Tagen; so wird eine Woche
+  // über eine Monatsgrenze nach den üblichen Tagen aufgeteilt (F10).
+  const soll = !tracked || (holiday && credited) ? 0 : Math.round(target * (1 - share));
   const ist = br.istMin;
   const saldo = tracked ? ist - soll : 0;
 
@@ -81,18 +101,11 @@ function dayResult(ctx, iso) {
   else if (iso === today) status = 'today';
   else status = 'future';
 
-  // Minusstunden zählen erst nach Ablauf des Tages (E-23).
-  let counted = 0;
-  if (tracked) {
-    if (status === 'past') counted = saldo;
-    else if (status === 'today') counted = Math.max(0, saldo);
-  }
-
   const hints = [];
   if (br.breakTooShort) hints.push(`Mindestpause unterschritten (${br.requiredBreakMin} min nötig)`);
   if (ist > LONG_DAY_MIN) hints.push('Mehr als 10 Stunden gearbeitet');
   if (blocks.length && holiday) hints.push('Arbeit an einem Feiertag');
-  else if (blocks.length && !isWorkday) hints.push('Arbeit an einem freien Tag');
+  else if (blocks.length && !isWorkday && !weekly) hints.push('Arbeit an einem freien Tag');
   if (blocks.length && absenceType && absenceFraction === 1) hints.push('Zeiten an einem ganzen Abwesenheitstag');
 
   const result = {
@@ -103,7 +116,9 @@ function dayResult(ctx, iso) {
     note: day && day.note ? day.note : '',
     ...br,
     holiday,
+    holidayCredited: Boolean(holiday) && credited,
     isWorkday,
+    weekly,
     target,
     tracked,
     absenceType,
@@ -111,13 +126,80 @@ function dayResult(ctx, iso) {
     soll,
     ist,
     saldo,
-    counted,
     status,
     hints,
     isEmpty: blocks.length === 0 && !day,
   };
+  ctx.cache.set(key, result);
+  return result;
+}
+
+/**
+ * Wertung der Tage einer Woche mit Wochensoll (F10): Map Datum → gewertete Minuten.
+ * Nach Ablauf der Woche zählt jeder Tag mit Ist − Soll (Summe = Wochensaldo);
+ * in der laufenden Woche zählt nur ein Plus gegenüber dem ganzen Wochensoll, gebucht auf heute.
+ */
+function weeklyCounted(ctx, iso) {
+  const monday = addDays(iso, 1 - isoWeekday(iso));
+  const key = `week-${monday}`;
+  if (ctx.cache.has(key)) return ctx.cache.get(key);
+  const days = eachDay(monday, addDays(monday, 6))
+    .map((d) => dayBase(ctx, d))
+    .filter((r) => r.weekly && r.tracked);
+  const map = new Map();
+  const sunday = addDays(monday, 6);
+  if (sunday < ctx.today) {
+    for (const r of days) map.set(r.date, r.ist - r.soll);
+  } else if (monday <= ctx.today) {
+    const plus = Math.max(0, days.reduce((sum, r) => sum + r.ist - r.soll, 0));
+    if (plus) map.set(ctx.today, plus);
+  }
+  ctx.cache.set(key, map);
+  return map;
+}
+
+/** Alle Werte eines Tages inklusive Wertung fürs Überstundenkonto (counted). */
+function dayResult(ctx, iso) {
+  if (ctx.cache.has(iso)) return ctx.cache.get(iso);
+  const base = dayBase(ctx, iso);
+  let counted = 0;
+  if (base.weekly) {
+    counted = weeklyCounted(ctx, iso).get(iso) || 0;
+  } else if (iso === ctx.today && ctx.today && weeklyCounted(ctx, iso).has(iso)) {
+    // Heute gilt ein festes Modell, aber ein Plus aus Wochensoll-Tagen dieser Woche wird auf heute gebucht.
+    counted = weeklyCounted(ctx, iso).get(iso) + (base.tracked ? Math.max(0, base.saldo) : 0);
+  } else if (base.tracked) {
+    // Minusstunden zählen erst nach Ablauf des Tages (E-23).
+    if (base.status === 'past') counted = base.saldo;
+    else if (base.status === 'today') counted = Math.max(0, base.saldo);
+  }
+  const result = { ...base, counted };
   ctx.cache.set(iso, result);
   return result;
+}
+
+// --- Anzeige-Regeln für Tageszeilen (Oberfläche, Excel, PDF) ---
+
+/** Tagessoll anzeigen? Beim Wochensoll steht das Soll nur in der Wochenzeile. */
+function showsDaySoll(r) {
+  return Boolean(r.soll) && !r.weekly;
+}
+
+/** Tagessaldo anzeigen? Nur für abgelaufene Tage bzw. heute mit Zeiten, nicht beim Wochensoll. */
+function showsDaySaldo(r) {
+  if (r.weekly || !r.tracked || !(r.soll || r.ist)) return false;
+  return r.status === 'past' || (r.status === 'today' && r.blocks.length > 0);
+}
+
+/** Tag als frei darstellen (grau)? */
+function isOffDay(r) {
+  return r.holidayCredited || !r.isWorkday;
+}
+
+function holidayText(r) {
+  if (!r.holiday) return '';
+  // Der Zusatz ist nur interessant, wenn der Feiertag auf einen (üblichen) Arbeitstag fällt.
+  return !r.holidayCredited && r.target > 0 ? `${r.holiday} (nicht angerechnet)` : r.holiday;
 }
 
 /** Summen über einen Zeitraum (einschließlich). */
@@ -189,6 +271,13 @@ function weekDays(iso) {
 
 module.exports = {
   ABSENCE_TYPES,
+  showsDaySoll,
+  showsDaySaldo,
+  isOffDay,
+  holidayText,
+  holidaysCredited,
+  isWeekly,
+  weeklyCounted,
   buildContext,
   modelTarget,
   hasTarget,

@@ -161,7 +161,7 @@ test('Excel- und PDF-Export', async (t) => {
   assert.match(xlsx.headers.get('content-disposition'), /stundenerfassung_2026-10\.xlsx/);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(xlsx.buffer);
-  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Tage', 'Monate', 'Info']);
+  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Tage', 'Monate', 'Wochen', 'Info']);
   const tage = wb.getWorksheet('Tage');
   assert.equal(tage.rowCount, 32, 'Kopfzeile + 31 Tage');
   const row7 = tage.getRow(8); // 07.10.
