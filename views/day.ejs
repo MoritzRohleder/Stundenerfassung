@@ -1,0 +1,116 @@
+<%- include('partials/header') %>
+<% const r = result; %>
+<nav class="day-nav">
+  <a href="/tag/<%= prev %>?zurueck=<%= encodeURIComponent(back) %>" aria-label="Vorheriger Tag">←</a>
+  <h1><%= fmt.weekdayLong(date) %>, <%= fmt.date(date) %></h1>
+  <a href="/tag/<%= next %>?zurueck=<%= encodeURIComponent(back) %>" aria-label="Nächster Tag">→</a>
+</nav>
+<p class="day-tags">
+<% if (date === today) { %><span class="tag">heute</span><% } %>
+<% if (r.holiday) { %><span class="tag <%= (r.holidayCredited || !r.target) ? 'tag-off' : 'tag-warning' %>">Feiertag: <%= holidayText(r) %></span><% } %>
+<% if (!r.isWorkday && !r.holiday) { %><span class="tag tag-off"><%= r.weekly ? 'kein üblicher Arbeitstag' : 'freier Tag' %></span><% } %>
+<% if (r.weekly) { %><span class="tag">Wochensoll</span><% } %>
+<% if (!r.tracked) { %><span class="tag tag-off">vor Beginn der Erfassung – zählt nicht ins Konto</span><% } %>
+</p>
+
+<%- include('partials/errors') %>
+
+<div class="grid day-grid">
+<form method="post" action="/tag/<%= date %>" id="day-form"
+      data-model-target="<%= modelTarget %>" data-holiday="<%= r.holidayCredited ? 1 : 0 %>" data-tracked="<%= r.tracked ? 1 : 0 %>" data-weekly="<%= r.weekly ? 1 : 0 %>">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="back" value="<%= back %>">
+
+  <fieldset>
+    <legend>Arbeitszeiten</legend>
+    <div id="block-rows">
+    <% rows.forEach((row, i) => { %>
+      <div class="block-row">
+        <input name="start" value="<%= row.start %>" placeholder="Beginn" inputmode="numeric" autocomplete="off" aria-label="Beginn Block <%= i + 1 %>" maxlength="5">
+        <span aria-hidden="true">–</span>
+        <input name="end" value="<%= row.end %>" placeholder="Ende" inputmode="numeric" autocomplete="off" aria-label="Ende Block <%= i + 1 %>" maxlength="5">
+      </div>
+    <% }) %>
+    </div>
+    <button type="button" class="secondary outline small" id="add-block" hidden>+ weiterer Block</button>
+    <small>Uhrzeit als 08:00, 8:00, 0800 oder 8. Leere Zeilen werden ignoriert.</small>
+  </fieldset>
+
+  <label>Pause (Minuten)
+    <input name="manual_break" id="manual-break" value="<%= form.manual_break %>" inputmode="numeric" maxlength="3"
+           placeholder="automatisch">
+    <small id="break-help">Nur bei genau einem Block. Leer = automatisch (30 min ab 6 h, 45 min ab 9 h). Bei mehreren Blöcken zählen die Lücken als Pause.</small>
+  </label>
+
+<% if (canHaveAbsence) { %>
+  <fieldset>
+    <legend>Abwesenheit</legend>
+    <select name="absence_type" id="absence-type" aria-label="Art der Abwesenheit">
+      <option value=""<% if (!form.absence_type) { %> selected<% } %>>keine</option>
+    <% Object.entries(ABSENCE_TYPES).forEach(([key, t]) => { %>
+      <option value="<%= key %>" data-half="<%= t.halfAllowed ? 1 : 0 %>" data-reduces="<%= t.reducesTarget ? 1 : 0 %>"<% if (form.absence_type === key) { %> selected<% } %>><%= t.label %></option>
+    <% }) %>
+    </select>
+    <div class="grid-inline" id="fraction-row">
+      <label class="radio-label"><input type="radio" name="absence_fraction" value="1"<% if (form.absence_fraction !== '0.5') { %> checked<% } %>> ganzer Tag</label>
+      <label class="radio-label"><input type="radio" name="absence_fraction" value="0.5"<% if (form.absence_fraction === '0.5') { %> checked<% } %>> halber Tag</label>
+    </div>
+    <small>Krank gibt es nur als ganzen Tag. Freizeitausgleich baut Überstunden ab (das Soll bleibt).</small>
+  </fieldset>
+<% } else if (r.absenceType) { %>
+  <p class="hint">Gespeicherte Abwesenheit: <%= absenceLabel(r.absenceType, r.absenceFraction) %> – an diesem Tag ist keine Arbeitszeit vorgesehen.</p>
+<% } %>
+
+  <label>Notiz
+    <input name="note" value="<%= form.note %>" maxlength="200">
+  </label>
+
+  <div class="button-row">
+    <button type="submit" name="action" value="stay">Speichern</button>
+    <button type="submit" name="action" value="next" class="secondary">Speichern &amp; nächster Tag</button>
+    <button type="submit" name="action" value="back" class="secondary outline">Speichern &amp; zurück</button>
+  </div>
+</form>
+
+<aside>
+  <article class="day-summary" id="day-summary">
+    <header>Berechnung<% if (errors.length) { %> (gespeicherter Stand)<% } %></header>
+    <dl class="kv">
+      <dt>Blockzeit</dt><dd data-live="block"><%- include('partials/duration', { min: r.blockMin }) %></dd>
+      <dt>Pause</dt><dd data-live="break"><%= r.breakMin %> min<% if (r.breakSource) { %> <small>(<%= BREAK_SOURCES[r.breakSource] %>)</small><% } %></dd>
+      <dt>Ist</dt><dd data-live="ist"><%- include('partials/duration', { min: r.ist }) %></dd>
+    <% if (!r.weekly) { %>
+      <dt>Soll</dt><dd data-live="soll"><%- include('partials/duration', { min: r.soll }) %></dd>
+      <dt>Saldo</dt><dd data-live="saldo"><%- include('partials/duration', { min: r.saldo, signed: true }) %></dd>
+    <% } %>
+    </dl>
+  <% if (week) { %>
+    <p><strong>Woche (KW <%= week.number %>)</strong> <small class="muted">– gespeicherter Stand</small></p>
+    <dl class="kv">
+      <dt>Ist</dt><dd><%- include('partials/duration', { min: week.ist }) %></dd>
+      <dt>Wochensoll</dt><dd><%- include('partials/duration', { min: week.soll }) %></dd>
+      <dt>Noch offen</dt><dd><%- include('partials/duration', { min: week.open }) %></dd>
+    </dl>
+    <p><small class="muted">Beim Wochensoll ist egal, an welchen Tagen du arbeitest. Ein Minus zählt erst nach Ablauf der Woche.</small></p>
+  <% } %>
+    <ul class="hints" data-live="hints">
+    <% r.hints.forEach((h) => { %><li><%= h %></li><% }) %>
+    </ul>
+  <% if (r.status === 'today' && r.saldo < 0) { %>
+    <p><small class="muted">Minusstunden zählen erst nach Ablauf des Tages ins Überstundenkonto.</small></p>
+  <% } %>
+  <% if (vacation) { %>
+    <p><small class="muted">Resturlaub <%= date.slice(0, 4) %>: <%= fmt.days(vacation.rest) %> Tage</small></p>
+  <% } %>
+  </article>
+<% if (!r.isEmpty) { %>
+  <form method="post" action="/tag/<%= date %>/loeschen" data-confirm="Alle Angaben dieses Tages löschen?">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="back" value="<%= back %>">
+    <button type="submit" class="secondary outline danger">Tag leeren</button>
+  </form>
+<% } %>
+  <p><a href="<%= back %>">← zurück</a></p>
+</aside>
+</div>
+<%- include('partials/footer') %>

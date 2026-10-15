@@ -1,0 +1,87 @@
+<%- include('partials/header') %>
+<% const s = view.summary; %>
+<nav class="day-nav">
+  <a href="/monat/<%= view.prev.year %>/<%= view.prev.month %>" aria-label="Vorheriger Monat">←</a>
+  <h1><%= fmt.month(view.month) %> <%= view.year %></h1>
+  <a href="/monat/<%= view.next.year %>/<%= view.next.month %>" aria-label="Nächster Monat">→</a>
+</nav>
+<p class="center"><a href="/jahr/<%= view.year %>">Jahresübersicht <%= view.year %></a><% if (!view.isCurrent) { %> · <a href="/monat">aktueller Monat</a><% } %></p>
+
+<div class="cards cards-small">
+  <article class="card"><header>Ist</header><p class="big"><%- include('partials/duration', { min: s.ist }) %></p></article>
+  <article class="card"><header>Soll</header>
+    <p class="big"><%- include('partials/duration', { min: s.soll }) %></p>
+  <% if (view.isCurrent) { %><p><small class="muted">davon bis gestern <%= fmt.hm(s.sollElapsed) %> h</small></p><% } %>
+  </article>
+  <article class="card"><header>Saldo des Monats</header><p class="big"><%- include('partials/duration', { min: s.saldo, signed: true }) %></p></article>
+  <article class="card"><header>Überstundenkonto am Monatsende</header>
+    <p class="big"><% if (view.overtimeEnd === null) { %>–<% } else { %><%- include('partials/duration', { min: view.overtimeEnd, signed: true }) %><% } %></p>
+  <% if (view.isCurrent) { %><p><small class="muted">Stand heute</small></p><% } %>
+  </article>
+  <article class="card"><header>Abwesenheiten</header>
+    <p>Urlaub <%= fmt.days(s.vacationDays) %> · Krank <%= fmt.days(s.sickDays) %><% if (s.compDays) { %> · FA <%= fmt.days(s.compDays) %><% } %><% if (s.otherDays) { %> · Sonst. <%= fmt.days(s.otherDays) %><% } %></p>
+  </article>
+</div>
+
+<div class="overflow-auto">
+<table class="month-table">
+  <thead>
+    <tr>
+      <th>Tag</th>
+      <th>Zeiten</th>
+      <th class="num">Pause</th>
+      <th class="num">Ist</th>
+      <th class="num">Soll</th>
+      <th class="num">Saldo</th>
+      <th>Info</th>
+    </tr>
+  </thead>
+  <tbody>
+<% view.rows.forEach((row) => { %>
+  <% if (row.kind === 'week') { %>
+    <tr class="week-row">
+      <th scope="row" colspan="3">KW <%= row.week %><% if (row.partial) { %> <small>(Teilwoche)</small><% } %></th>
+      <td class="num"><%- include('partials/duration', { min: row.ist }) %></td>
+      <td class="num"><%- include('partials/duration', { min: row.soll }) %></td>
+      <td class="num"><%- include('partials/duration', { min: row.saldo, signed: true }) %></td>
+      <td></td>
+    </tr>
+  <% } else {
+       const off = isOffDay(row);
+       const cls = [off ? 'off' : '', row.status === 'today' ? 'today' : '', row.status === 'future' ? 'future' : ''].filter(Boolean).join(' '); %>
+    <tr<% if (cls) { %> class="<%= cls %>"<% } %>>
+      <td class="date-cell"><a href="/tag/<%= row.date %>?zurueck=<%= encodeURIComponent(currentPath) %>"><span class="wd"><%= fmt.weekday(row.date) %></span> <%= fmt.dateShort(row.date) %></a></td>
+      <td><% if (row.blocks.length) { %><%= row.blocks.map((b) => `${fmt.clock(b.start_min)}–${fmt.clock(b.end_min)}`).join(', ') %><% } %></td>
+      <td class="num pause-cell"><% if (row.breakSource) { %><%= row.breakMin %> min<% if (row.breakSource === 'auto') { %><span class="muted" title="automatisch"> a</span><% } %><% } %></td>
+      <td class="num"><% if (row.ist || row.blocks.length) { %><%- include('partials/duration', { min: row.ist }) %><% } %></td>
+      <td class="num"><% if (showsDaySoll(row)) { %><%- include('partials/duration', { min: row.soll }) %><% } else if (row.weekly && row.soll) { %><span class="muted" title="Wochensoll – Soll und Saldo stehen in der KW-Zeile">W</span><% } %></td>
+      <td class="num"><% if (showsDaySaldo(row)) { %><%- include('partials/duration', { min: row.saldo, signed: true }) %><% } %></td>
+      <td class="info-cell">
+        <% if (row.holiday) { %><span class="tag <%= (row.holidayCredited || !row.target) ? 'tag-off' : 'tag-warning' %>"><%= holidayText(row) %></span><% } %>
+        <% if (row.absenceType) { %><span class="tag tag-<%= row.absenceType %>" title="<%= absenceLabel(row.absenceType, row.absenceFraction) %>"><%= absenceLabel(row.absenceType, row.absenceFraction) %></span><% } %>
+        <% row.hints.forEach((h) => { %><span class="tag tag-warning" title="<%= h %>">⚠ <%= h %></span><% }) %>
+        <% if (row.note) { %><span class="note"><%= row.note %></span><% } %>
+      </td>
+    </tr>
+  <% } %>
+<% }) %>
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row" colspan="3">Monat</th>
+      <td class="num"><%- include('partials/duration', { min: s.ist }) %></td>
+      <td class="num"><%- include('partials/duration', { min: s.soll }) %></td>
+      <td class="num"><%- include('partials/duration', { min: s.saldo, signed: true }) %></td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+<p><small class="muted">Saldo zählt nur abgelaufene Tage; heute nur Plusstunden. „a“ = automatische Pause, „W“ = Wochensoll (Soll und Saldo in der KW-Zeile, Minus erst nach Ablauf der Woche). Klick auf einen Tag zum Erfassen.</small></p>
+<p class="button-row">
+  <a href="/abwesenheit/neu">Urlaub für einen Zeitraum eintragen →</a>
+  <span class="muted">Export:</span>
+  <a href="/daten/export?format=pdf&amp;von=<%= view.year %>-<%= String(view.month).padStart(2, '0') %>&amp;bis=<%= view.year %>-<%= String(view.month).padStart(2, '0') %>">PDF</a>
+  <a href="/daten/export?format=excel&amp;von=<%= view.year %>-<%= String(view.month).padStart(2, '0') %>&amp;bis=<%= view.year %>-<%= String(view.month).padStart(2, '0') %>">Excel</a>
+</p>
+<%- include('partials/footer') %>

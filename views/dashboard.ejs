@@ -1,0 +1,72 @@
+<%- include('partials/header') %>
+<% const t = view.today; %>
+<h1>Übersicht</h1>
+
+<div class="cards">
+  <article class="card">
+    <header>Heute · <%= fmt.weekdayLong(t.date) %>, <%= fmt.date(t.date) %></header>
+  <% if (t.holiday) { %><p class="tag <%= (t.holidayCredited || !t.target) ? 'tag-off' : 'tag-warning' %>"><%= holidayText(t) %></p><% } %>
+  <% if (t.absenceType) { %><p class="tag tag-<%= t.absenceType %>"><%= absenceLabel(t.absenceType, t.absenceFraction) %></p><% } %>
+  <% if (t.blocks.length) { %>
+    <p class="blocks"><%= t.blocks.map((b) => `${fmt.clock(b.start_min)}–${fmt.clock(b.end_min)}`).join(', ') %></p>
+  <% } else { %>
+    <p class="muted">Noch nichts erfasst.</p>
+  <% } %>
+    <dl class="kv">
+      <dt>Ist</dt><dd><%- include('partials/duration', { min: t.ist }) %></dd>
+    <% if (!t.weekly) { %>
+      <dt>Soll</dt><dd><%- include('partials/duration', { min: t.soll }) %></dd>
+      <dt>Saldo</dt><dd><%- include('partials/duration', { min: t.saldo, signed: true }) %></dd>
+    <% } %>
+    </dl>
+  <% if (t.weekly) { %><p><small class="muted">Wochensoll: siehe Woche.</small></p>
+  <% } else if (t.saldo < 0) { %><p><small class="muted">Minusstunden von heute zählen erst nach Ablauf des Tages.</small></p><% } %>
+    <a href="/tag/<%= t.date %>?zurueck=/" role="button">Heute erfassen</a>
+  </article>
+
+  <article class="card highlight">
+    <header>Überstundenkonto</header>
+    <p class="big"><%- include('partials/duration', { min: view.overtime, signed: true }) %></p>
+    <p><small class="muted">Stand heute, seit <%= fmt.date(user.tracking_start) %> (Startsaldo <%= fmt.signedHM(user.overtime_start_minutes) %> h)</small></p>
+  </article>
+
+  <article class="card">
+    <header>Woche · KW <%= view.week.number %></header>
+    <dl class="kv">
+      <dt>Ist</dt><dd><%- include('partials/duration', { min: view.week.ist }) %></dd>
+      <dt>Soll</dt><dd><%- include('partials/duration', { min: view.week.soll }) %></dd>
+      <dt>Saldo</dt><dd><%- include('partials/duration', { min: view.week.saldo, signed: true }) %></dd>
+    <% if (t.weekly) { %>
+      <dt>Noch offen</dt><dd><%- include('partials/duration', { min: Math.max(0, view.week.soll - view.week.ist) }) %></dd>
+    <% } %>
+    </dl>
+    <p><small class="muted"><%= fmt.date(view.week.from) %> – <%= fmt.date(view.week.to) %></small></p>
+  </article>
+
+  <article class="card">
+    <header><%= fmt.month(view.month.month) %> <%= view.month.year %></header>
+    <dl class="kv">
+      <dt>Ist</dt><dd><%- include('partials/duration', { min: view.month.ist }) %></dd>
+      <dt>Soll bis gestern</dt><dd><%- include('partials/duration', { min: view.month.sollElapsed }) %></dd>
+      <dt>Soll gesamt</dt><dd><%- include('partials/duration', { min: view.month.soll }) %></dd>
+      <dt>Saldo</dt><dd><%- include('partials/duration', { min: view.month.saldo, signed: true }) %></dd>
+    </dl>
+    <a href="<%= monthUrl(today) %>">Zur Monatsübersicht →</a>
+  </article>
+
+  <article class="card">
+    <header>Urlaub <%= today.slice(0, 4) %></header>
+  <% if (view.vacation) { const v = view.vacation; %>
+    <p class="big"><%= fmt.days(v.rest) %> <small>Tage übrig</small></p>
+    <dl class="kv">
+      <dt>Anspruch</dt><dd><%= fmt.days(v.entitlement) %></dd>
+      <dt>Übertrag</dt><dd><%= fmt.days(v.carryover) %></dd>
+      <dt>Genommen</dt><dd><%= fmt.days(v.taken) %><% if (v.planned) { %> <small>(davon <%= fmt.days(v.planned) %> geplant)</small><% } %></dd>
+    </dl>
+  <% } else { %>
+    <p class="muted">Die Erfassung beginnt erst später.</p>
+  <% } %>
+    <a href="/abwesenheit/neu">Urlaub für einen Zeitraum eintragen →</a>
+  </article>
+</div>
+<%- include('partials/footer') %>

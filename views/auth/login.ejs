@@ -1,0 +1,17 @@
+<%- include('../partials/header') %>
+<article class="narrow">
+  <h1>Anmelden</h1>
+  <%- include('../partials/errors') %>
+  <form method="post" action="/login">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Nutzername
+      <input name="username" value="<%= username %>" autocomplete="username" autocapitalize="none" required autofocus>
+    </label>
+    <label>Passwort
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit">Anmelden</button>
+  </form>
+  <p>Noch kein Konto? <a href="/registrieren">Registrieren</a></p>
+</article>
+<%- include('../partials/footer') %>
