@@ -1,7 +1,8 @@
 # Stundenerfassung-Spec
 
 > Spezifikation für die Webanwendung **Stundenerfassung** zum privaten Nachhalten der eigenen Arbeitszeit.
-> Status: **v0.4** der Spezifikation – umgesetzt im Prototypen Version 0.3.0 (M0 bis M7.2).
+> Status: **v0.4** der Spezifikation – im Prototyp umgesetzt (M0 bis M7.2).
+> Die Versionsnummer der Spezifikation ist unabhängig von der Version der Software (siehe 10.9).
 > Technisch angelehnt an das Haushaltsprojekt (Node.js, Express, EJS, Pico.css, JSON-Dateien, Docker), aber nicht 1:1.
 > Getroffene Entscheidungen stehen in [Kapitel 13.1](#131-entscheidungen), offene Punkte in [Kapitel 13.2](#132-offene-fragen) (im Text mit `❓` markiert).
 
@@ -372,7 +373,7 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 {
   "format": "stundenerfassung-export",
   "version": 1,
-  "app_version": "0.2.0",
+  "app_version": "0.1.0",
   "exported_at": "2026-10-15T09:30:00.000Z",
   "username": "moritz",
   "settings": { "state": "NW", "tracking_start": "2026-09-01", "overtime_start_minutes": 195, "vacation_days_default": 30 },
@@ -561,7 +562,9 @@ Stundenerfassung/
 | Workflow | Auslöser | Inhalt |
 |----------|----------|--------|
 | `ci.yml` | Push, PR auf `master` | `npm test` (Node 22 und 24); Docker-Image bauen, Container starten, `/health` prüfen |
-| `release.yml` | Release veröffentlicht | Tag `vX.Y.Z` = `package.json`; Tests; Multi-Arch-Image (`amd64`, `arm64`) nach ghcr.io mit Tags `X.Y.Z`, `X.Y`, `X`, `latest` |
+| `release.yml` | Release veröffentlicht, oder von Hand („Run workflow“ mit Tag) | Tag `vX.Y.Z` = `package.json`; Tests; Multi-Arch-Image (`amd64`, `arm64`) nach ghcr.io mit Tags `X.Y.Z`, `X.Y`, `X`, `latest` (Vorabversionen ohne `latest`) |
+
+**Versionen:** Die Software trägt die Version des nächsten Releases (aktuell `0.1.0`). Die Version in `package.json` wird nur beim Release geändert, nicht bei jeder Änderung. Das Release wird auf dem Commit getaggt, dessen `package.json` diese Version enthält – sonst bricht der Release-Workflow mit einer Meldung ab.
 
 ## 11. Nicht-funktionale Anforderungen
 
@@ -648,7 +651,7 @@ Für später vorgemerkt: Woche über eine Monatsgrenze ganz dem Monat ihres Donn
 | M7.2 | **Flexible Verträge** | F-14: Wochensoll und nicht angerechnete Feiertage (E-27 bis E-29). |
 | M8 | **Ausbau** | F-06, F-36, F-37, Stempeluhr nach Bedarf. |
 
-**Stand Version 0.3.0** (Prototyp): M0 bis M7.2 sind umgesetzt, F-37 (Druck-Stylesheet) in einfacher Form. Offen sind F-06 (Handbuch), F-36 (Diagramme) und die Stempeluhr.
+**Stand des Prototyps:** M0 bis M7.2 sind umgesetzt, F-37 (Druck-Stylesheet) in einfacher Form. Offen sind F-06 (Handbuch), F-36 (Diagramme) und die Stempeluhr.
 
 Bekannte Einschränkungen:
 

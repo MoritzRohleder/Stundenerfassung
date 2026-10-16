@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+<% if (setupDone) { %>
+<h1>Einstellungen</h1>
+<%- include('../partials/settings-nav') %>
+<% } %>
+<article class="narrow">
+  <h2>Sicherung importieren</h2>
+  <% if (!setupDone) { %>
+  <p>Du kannst hier eine Sicherungsdatei einspielen, statt die Einrichtung von Hand auszufüllen. Einstellungen und alle Daten werden aus der Datei übernommen.</p>
+  <% } %>
+  <%- include('../partials/errors') %>
+  <form method="post" action="/daten/import" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Sicherungsdatei (.json)
+      <input type="file" name="file" accept=".json,application/json" required>
+    </label>
+  <% if (setupDone) { %>
+    <fieldset>
+      <legend>Was soll übernommen werden?</legend>
+      <label class="radio-block"><input type="radio" name="mode" value="days" checked> Nur die Tage aus der Datei – vorhandene Tage mit gleichem Datum werden überschrieben, alles andere bleibt</label>
+      <label class="radio-block"><input type="radio" name="mode" value="replace"> Alles ersetzen – Einstellungen, Arbeitszeitmodelle, Urlaub und alle Tage</label>
+    </fieldset>
+    <label><input type="checkbox" name="confirm" value="ja"> Ich weiß: Bei „Alles ersetzen“ werden alle bisherigen Daten gelöscht.</label>
+  <% } %>
+    <p><small>Die Datei wird zuerst vollständig geprüft. Enthält sie einen Fehler, wird nichts übernommen.</small></p>
+    <button type="submit">Importieren</button>
+  </form>
+  <% if (!setupDone) { %><p><a href="/einrichtung">← zurück zur Einrichtung</a></p><% } %>
+</article>
+<%- include('../partials/footer') %>
