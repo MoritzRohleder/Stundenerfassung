@@ -1,31 +1,64 @@
 name: Release
 
+# Baut beim Veröffentlichen eines Releases das Docker-Image und lädt es nach ghcr.io.
+# Lässt sich auch von Hand für einen vorhandenen Tag starten (Actions → Release → Run workflow).
+
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Vorhandener Tag, z. B. v0.1.0'
+        required: true
 
 permissions:
   contents: read
   packages: write
 
+env:
+  IMAGE: ghcr.io/moritzrohleder/stundenerfassung
+
 jobs:
   image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Version prüfen
+      - name: Tag bestimmen
+        id: tag
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          PRE: ${{ github.event.release.prerelease }}
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          PKG="$(node -p "require('./package.json').version")"
-          if [ "$TAG" != "$PKG" ]; then
-            echo "Tag v$TAG passt nicht zu package.json ($PKG)"; exit 1
+          if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Der Tag '$TAG' hat nicht die Form vX.Y.Z"; exit 1
           fi
-      - uses: actions/setup-node@v4
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          case "$TAG" in *-*) PRE=true ;; esac
+          echo "prerelease=${PRE:-false}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/tags/${{ steps.tag.outputs.tag }}
+
+      - name: Version prüfen
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$PKG" ]; then
+            echo "::error::Tag $TAG passt nicht zur Version in package.json ($PKG). Bitte das Release auf einem Commit taggen, dessen package.json die Version $VERSION hat."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm test
+
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -33,16 +66,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/moritzrohleder/stundenerfassung
+          images: ${{ env.IMAGE }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ steps.tag.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ steps.tag.outputs.tag }}
           flavor: |
-            latest=${{ !github.event.release.prerelease }}
+            latest=${{ steps.tag.outputs.prerelease != 'true' }}
+
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -50,3 +85,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Ergebnis
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          { echo "### Image veröffentlicht"; echo '```'; echo "$TAGS"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

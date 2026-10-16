@@ -1,0 +1,49 @@
+<%- include('../partials/header') %>
+<h1>Einstellungen</h1>
+<%- include('../partials/settings-nav') %>
+
+<div class="grid">
+<article>
+  <header><strong>Export für Excel oder als PDF</strong></header>
+  <p><small>Ganze Monate von … bis. Excel enthält alle Tage, eine Monatsübersicht und die Einstellungen; das PDF ist ein Stundennachweis pro Monat (bei mehreren Monaten mit Jahresübersicht).</small></p>
+  <form method="get" action="/daten/export">
+    <fieldset>
+      <legend>Von</legend>
+      <div class="grid-inline">
+        <select name="von_m" aria-label="Startmonat">
+        <% for (let m = 1; m <= 12; m++) { %><option value="<%= m %>"<% if (m === current.month) { %> selected<% } %>><%= fmt.month(m) %></option><% } %>
+        </select>
+        <select name="von_j" aria-label="Startjahr">
+        <% years.forEach((y) => { %><option value="<%= y %>"<% if (y === current.year) { %> selected<% } %>><%= y %></option><% }) %>
+        </select>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Bis (einschließlich)</legend>
+      <div class="grid-inline">
+        <select name="bis_m" aria-label="Endmonat">
+        <% for (let m = 1; m <= 12; m++) { %><option value="<%= m %>"<% if (m === current.month) { %> selected<% } %>><%= fmt.month(m) %></option><% } %>
+        </select>
+        <select name="bis_j" aria-label="Endjahr">
+        <% years.forEach((y) => { %><option value="<%= y %>"<% if (y === current.year) { %> selected<% } %>><%= y %></option><% }) %>
+        </select>
+      </div>
+    </fieldset>
+    <div class="button-row">
+      <button type="submit" name="format" value="excel">Excel herunterladen</button>
+      <button type="submit" name="format" value="pdf" class="secondary">PDF herunterladen</button>
+    </div>
+  </form>
+</article>
+
+<article>
+  <header><strong>Datensicherung</strong></header>
+  <p>Alle deine Daten – Einstellungen, Arbeitszeitmodelle, Urlaubsansprüche und alle Tage – als eine Datei. Diese Datei kann der Import wieder einlesen, z. B. auf einem anderen Server.</p>
+  <a href="/daten/sicherung" role="button">Sicherung herunterladen (.json)</a>
+  <hr>
+  <header><strong>Import</strong></header>
+  <p>Eine Sicherungsdatei einlesen – entweder alles ersetzen oder nur die Tage aus der Datei übernehmen.</p>
+  <a href="/daten/import" role="button" class="secondary">Zum Import</a>
+</article>
+</div>
+<%- include('../partials/footer') %>
