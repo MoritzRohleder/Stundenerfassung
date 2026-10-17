@@ -70,6 +70,7 @@
     const holiday = form.dataset.holiday === '1';
     const tracked = form.dataset.tracked === '1';
     const weekly = form.dataset.weekly === '1';
+    const dayFactor = Number(form.dataset.dayFactor || 1);
 
     addBtn.hidden = false;
     addBtn.addEventListener('click', () => {
@@ -83,9 +84,12 @@
       update();
     });
 
+    let invalidReason = '';
+
     function update() {
       const blocks = [];
       let invalid = false;
+      invalidReason = '';
       rowsEl.querySelectorAll('.block-row').forEach((row) => {
         const [s, e] = row.querySelectorAll('input');
         if (!s.value.trim() && !e.value.trim()) return;
@@ -93,6 +97,9 @@
         const end = parseClock(e.value, true);
         if (start === null || end === null || end <= start) {
           invalid = true;
+          if (!invalidReason) {
+            invalidReason = start !== null && end !== null ? 'Das Ende muss nach dem Beginn liegen.' : 'Eingabe unvollständig.';
+          }
           return;
         }
         blocks.push([start, end]);
@@ -105,10 +112,10 @@
         const halfAllowed = opt && opt.value && opt.dataset.half === '1';
         fractionRow.hidden = !opt || !opt.value;
         const half = fractionRow.querySelector('input[value="0.5"]');
-        half.disabled = !halfAllowed;
+        half.disabled = !halfAllowed || dayFactor < 1;
         if (!halfAllowed) fractionRow.querySelector('input[value="1"]').checked = true;
       }
-      if (invalid) return;
+      if (invalid) return false;
 
       const blockMin = blocks.reduce((sum, b) => sum + b[1] - b[0], 0);
       let breakMin = 0;
@@ -137,7 +144,7 @@
           share = checked && checked.value === '0.5' ? 0.5 : 1;
         }
       }
-      const soll = !tracked || holiday ? 0 : Math.round(modelTarget * (1 - share));
+      const soll = !tracked || holiday ? 0 : Math.round(modelTarget * dayFactor * (1 - share));
       const saldo = tracked ? ist - soll : 0;
 
       const set = (key, node) => {
@@ -153,11 +160,156 @@
         set('soll', durationEl(soll));
         set('saldo', durationEl(saldo, true));
       }
+      return true;
     }
 
     form.addEventListener('input', update);
     form.addEventListener('change', update);
     update();
+
+    // --- Automatisch speichern: beim Verlassen eines Feldes und wenn ein Block vollständig ist ---
+    const statusEl = document.getElementById('autosave-status');
+    const BREAK_LABELS = { auto: 'automatisch', manual: 'manuell', gaps: 'Lücken' };
+    let dirty = false;
+    let saving = false;
+    let again = false;
+    let timer = null;
+
+    function showStatus(text, kind) {
+      statusEl.hidden = false;
+      statusEl.textContent = text;
+      statusEl.className = 'autosave-status' + (kind ? ' ' + kind : '');
+    }
+
+    // Nicht form.action: die Knöpfe heißen name="action" und überdecken die Eigenschaft.
+    const saveUrl = form.getAttribute('action');
+
+    function serialize() {
+      const data = new URLSearchParams(new FormData(form));
+      data.set('action', 'stay');
+      return data;
+    }
+
+    // Werte vom Server übernehmen (maßgeblich, inkl. Hinweisen und Wochenstand).
+    function applyServer(json) {
+      const d = json.day;
+      const set = (key, node) => {
+        const el = summary.querySelector('[data-live="' + key + '"]');
+        if (el) el.replaceChildren(node);
+      };
+      set('block', durationEl(d.blockMin));
+      const br = document.createElement('span');
+      br.textContent = d.breakMin + ' min' + (d.breakSource ? ' (' + BREAK_LABELS[d.breakSource] + ')' : '');
+      set('break', br);
+      set('ist', durationEl(d.ist));
+      if (!weekly) {
+        set('soll', durationEl(d.soll));
+        set('saldo', durationEl(d.saldo, true));
+      }
+      const hints = summary.querySelector('[data-live="hints"]');
+      hints.replaceChildren(...d.hints.map((h) => {
+        const li = document.createElement('li');
+        li.textContent = h;
+        return li;
+      }));
+      if (json.week) {
+        for (const key of ['ist', 'soll', 'open']) {
+          const el = summary.querySelector('[data-week="' + key + '"]');
+          if (el) el.replaceChildren(durationEl(json.week[key]));
+        }
+      }
+    }
+
+    // Nach dem Speichern immer eine freie Zeile für den nächsten Block anbieten.
+    function ensureEmptyRow() {
+      const rows = rowsEl.querySelectorAll('.block-row');
+      const last = rows[rows.length - 1];
+      if ([...last.querySelectorAll('input')].some((i) => i.value.trim())) {
+        const clone = last.cloneNode(true);
+        clone.querySelectorAll('input').forEach((i) => {
+          i.value = '';
+        });
+        rowsEl.appendChild(clone);
+      }
+    }
+
+    async function save() {
+      clearTimeout(timer);
+      if (saving) {
+        again = true;
+        return;
+      }
+      if (!update()) {
+        showStatus('Noch nicht gespeichert – ' + invalidReason, 'pending');
+        return;
+      }
+      saving = true;
+      dirty = false;
+      showStatus('Speichert …', 'pending');
+      try {
+        const res = await fetch(saveUrl, {
+          method: 'POST',
+          body: serialize(),
+          headers: { 'X-Requested-With': 'fetch' },
+        });
+        const json = await res.json();
+        if (json.ok) {
+          const now = new Date();
+          showStatus('Gespeichert um ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'), 'ok');
+          applyServer(json);
+          ensureEmptyRow();
+        } else {
+          dirty = true;
+          showStatus('Nicht gespeichert: ' + json.errors.join(' '), 'error');
+        }
+      } catch (e) {
+        dirty = true;
+        showStatus('Speichern fehlgeschlagen – bitte „Speichern“ drücken oder die Seite neu laden.', 'error');
+      }
+      saving = false;
+      if (again) {
+        again = false;
+        save();
+      }
+    }
+
+    function schedule(delay) {
+      dirty = true;
+      clearTimeout(timer);
+      timer = setTimeout(save, delay);
+    }
+
+    // Feld verlassen bzw. Auswahl geändert
+    form.addEventListener('change', (ev) => {
+      if (ev.target.matches('input, select')) schedule(150);
+    });
+    // Block vollständig (Beginn und Ende gültig): nach kurzer Tipp-Pause speichern
+    rowsEl.addEventListener('input', (ev) => {
+      const row = ev.target.closest('.block-row');
+      if (!row) return;
+      const [s, e] = row.querySelectorAll('input');
+      const start = parseClock(s.value, false);
+      const end = parseClock(e.value, true);
+      if (start !== null && end !== null && end > start) schedule(1500);
+      else dirty = true;
+    });
+    // Beim Verlassen eines Zeitfelds die Eingabe einheitlich anzeigen (8 → 08:00, 1615 → 16:15)
+    rowsEl.addEventListener('focusout', (ev) => {
+      if (!ev.target.matches('input')) return;
+      const min = parseClock(ev.target.value, ev.target.name === 'end');
+      if (min !== null) {
+        ev.target.value = String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+      }
+    });
+    // Normales Absenden über die Knöpfe: kein zusätzliches Hintergrund-Speichern
+    form.addEventListener('submit', () => {
+      clearTimeout(timer);
+      dirty = false;
+    });
+    // Seite verlassen mit ungespeicherten, gültigen Änderungen: im Hintergrund nachschicken
+    window.addEventListener('pagehide', () => {
+      if (dirty && !saving && update() && navigator.sendBeacon) navigator.sendBeacon(saveUrl, serialize());
+    });
   }
 
   // --- Bestätigung vor dem Löschen ---

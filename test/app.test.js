@@ -113,7 +113,7 @@ test('Ganzer Ablauf: Tag erfassen, Monat und Jahr ansehen', async (t) => {
   res = await c.post('/abwesenheit/neu', { from: '2026-12-21', to: '2027-01-03', absence_type: 'vacation' });
   assert.equal(res.status, 302);
   res = await c.get('/');
-  assert.match(res.text, /davon 8 geplant/);
+  assert.match(res.text, /davon 7 geplant/, 'Heiligabend und Silvester zählen je einen halben Urlaubstag');
 
   // Zeitraum mit anderer Arbeitszeit
   const period = new URLSearchParams({ valid_from: '01.02.2027', valid_to: '10.04.2027', weekly: '20', note: 'Test' });
@@ -175,4 +175,37 @@ test('Daten anderer Nutzer sind nicht sichtbar', async (t) => {
   const schedules = await a.get('/einstellungen/arbeitszeit');
   const id = schedules.text.match(/arbeitszeit\/([0-9a-f-]{36})\/bearbeiten/)[1];
   assert.equal((await b.get(`/einstellungen/arbeitszeit/${id}/bearbeiten`)).status, 404);
+});
+
+test('Automatisches Speichern der Tagesseite antwortet mit JSON', async (t) => {
+  const s = await start('2026-10-14');
+  t.after(() => s.stop());
+  const c = new Client(s.base);
+  await registerAndSetup(c);
+  const token = await c.csrf('/tag/2026-10-12');
+  const send = (fields) => {
+    const p = new URLSearchParams({ _csrf: token, action: 'stay' });
+    p.append('start', fields.start || '');
+    p.append('end', fields.end || '');
+    return fetch(`${s.base}/tag/2026-10-12`, {
+      method: 'POST',
+      body: p,
+      headers: { cookie: c.cookie, 'X-Requested-With': 'fetch' },
+      redirect: 'manual',
+    });
+  };
+  let res = await send({ start: '8', end: '17' });
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.equal(json.ok, true);
+  assert.equal(json.day.ist, 8 * 60 + 30, 'genau 9 h: 30 min Pause (45 min erst über 9 h)');
+  assert.equal(json.day.breakSource, 'auto');
+  assert.match((await c.get('/tag/2026-10-12')).text, /value="17:00"/, 'wirklich gespeichert');
+
+  res = await send({ start: '17', end: '8' });
+  assert.equal(res.status, 400);
+  const err = await res.json();
+  assert.equal(err.ok, false);
+  assert.match(err.errors[0], /muss nach dem Beginn/);
+  assert.match((await c.get('/tag/2026-10-12')).text, /value="17:00"/, 'Fehler ändert nichts');
 });

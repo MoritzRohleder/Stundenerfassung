@@ -5,6 +5,7 @@
 <div class="cards">
   <article class="card">
     <header>Heute · <%= fmt.weekdayLong(t.date) %>, <%= fmt.date(t.date) %></header>
+  <% if (t.halfDay) { %><p class="tag tag-off"><%= holidayText(t) %></p><% } %>
   <% if (t.holiday) { %><p class="tag <%= (t.holidayCredited || !t.target) ? 'tag-off' : 'tag-warning' %>"><%= holidayText(t) %></p><% } %>
   <% if (t.absenceType) { %><p class="tag tag-<%= t.absenceType %>"><%= absenceLabel(t.absenceType, t.absenceFraction) %></p><% } %>
   <% if (t.blocks.length) { %>

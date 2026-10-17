@@ -181,3 +181,13 @@ th.num, td.num { text-align: right; }
 
 .radio-block { display: flex; gap: 0.5rem; align-items: flex-start; margin-bottom: 0.5rem; }
 .radio-block input { flex: none; margin-top: 0.2rem; }
+
+/* Konto-Spalte: Tage ohne Buchung blass, damit Änderungen auffallen */
+.konto-cell.unchanged .dur { opacity: 0.45; }
+
+/* Automatisches Speichern auf der Tagesseite */
+.autosave-status { margin: 0.5rem 0 0; font-size: 0.9em; color: var(--pico-muted-color); }
+.autosave-status.ok { color: var(--se-plus); }
+.autosave-status.ok::before { content: '✓ '; }
+.autosave-status.error { color: var(--se-minus); }
+.autosave-status.pending { color: var(--se-warning); }
