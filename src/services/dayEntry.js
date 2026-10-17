@@ -1,7 +1,7 @@
 'use strict';
 
 const { parseClock, formatClock } = require('../utils/time');
-const { ABSENCE_TYPES, hasTarget } = require('./worktime');
+const { ABSENCE_TYPES, hasTarget, isHalfWorkday } = require('./worktime');
 
 // Prüfen und Speichern eines Arbeitstages (Spec F-20, F-23).
 
@@ -75,6 +75,8 @@ function parseDayForm(body, ctx, date) {
     absenceFraction = body.absence_fraction === '0.5' ? 0.5 : 1;
     if (absenceFraction === 0.5 && !ABSENCE_TYPES[absenceType].halfAllowed) {
       errors.push(`${ABSENCE_TYPES[absenceType].label} gibt es nur als ganzen Tag.`);
+    } else if (absenceFraction === 0.5 && isHalfWorkday(ctx, date)) {
+      errors.push('Dieser Tag ist schon ein halber Arbeitstag – bitte „ganzer Tag“ wählen (zählt als halber Tag).');
     }
     if (!hasTarget(ctx, date)) {
       errors.push('An diesem Tag ist keine Arbeitszeit vorgesehen (Wochenende, Feiertag oder freier Tag) – eine Abwesenheit ist nicht nötig.');

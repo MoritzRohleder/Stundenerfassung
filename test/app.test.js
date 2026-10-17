@@ -113,7 +113,7 @@ test('Ganzer Ablauf: Tag erfassen, Monat und Jahr ansehen', async (t) => {
   res = await c.post('/abwesenheit/neu', { from: '2026-12-21', to: '2027-01-03', absence_type: 'vacation' });
   assert.equal(res.status, 302);
   res = await c.get('/');
-  assert.match(res.text, /davon 8 geplant/);
+  assert.match(res.text, /davon 7 geplant/, 'Heiligabend und Silvester zählen je einen halben Urlaubstag');
 
   // Zeitraum mit anderer Arbeitszeit
   const period = new URLSearchParams({ valid_from: '01.02.2027', valid_to: '10.04.2027', weekly: '20', note: 'Test' });

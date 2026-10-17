@@ -1,7 +1,7 @@
 # Stundenerfassung-Spec
 
 > Spezifikation für die Webanwendung **Stundenerfassung** zum privaten Nachhalten der eigenen Arbeitszeit.
-> Status: **v0.4** der Spezifikation – im Prototyp umgesetzt (M0 bis M7.2).
+> Status: **v0.5** der Spezifikation – im Prototyp umgesetzt (M0 bis M7.2).
 > Die Versionsnummer der Spezifikation ist unabhängig von der Version der Software (siehe 10.9).
 > Technisch angelehnt an das Haushaltsprojekt (Node.js, Express, EJS, Pico.css, JSON-Dateien, Docker), aber nicht 1:1.
 > Getroffene Entscheidungen stehen in [Kapitel 13.1](#131-entscheidungen), offene Punkte in [Kapitel 13.2](#132-offene-fragen) (im Text mit `❓` markiert).
@@ -294,7 +294,10 @@ Rest(Jahr)      = Anspruch + Übertrag − Genommen
 - Bundesweit: Neujahr, Karfreitag, Ostermontag, 1. Mai, Christi Himmelfahrt, Pfingstmontag, Tag der Deutschen Einheit, 1. und 2. Weihnachtstag.
 - Länderspezifisch: Heilige Drei Könige (BW, BY, ST), Internationaler Frauentag (BE, MV), Fronleichnam (BW, BY, HE, NW, RP, SL), Mariä Himmelfahrt (SL; BY nur teilweise → nicht berücksichtigt), Weltkindertag (TH), Reformationstag (BB, HB, HH, MV, NI, SN, ST, SH, TH), Allerheiligen (BW, BY, NW, RP, SL), Buß- und Bettag (SN).
 - Ostersonntag und Pfingstsonntag (in BB gesetzlich) fallen immer auf einen Sonntag und spielen nur eine Rolle, wenn der Sonntag ein Arbeitstag im Modell ist; sie werden für BB mitgeführt.
-- Heiligabend und Silvester sind **keine** Feiertage (keine Sonderregel im ersten Release).
+- **Heiligabend (24.12.) und Silvester (31.12.)** sind keine Feiertage, aber **halbe Arbeitstage** (E-30): Fallen sie auf einen Arbeitstag, ist das Soll halb so groß (`Soll = Tagessoll × 0,5 × (1 − Abwesenheitsanteil)`).
+  - Eine Abwesenheit an diesen Tagen gibt es nur als „ganzer Tag“ (= der verbleibende halbe Tag); sie zählt als **halber** Urlaubs- bzw. Krankheitstag.
+  - Bei Modellen mit „Feiertage werden nicht angerechnet“ (E-27) gilt das volle Tagessoll.
+  - Anzeige: „Heiligabend (halber Arbeitstag)“ bzw. „Silvester (halber Arbeitstag)“.
 - Ein Bundesland-Wechsel des Nutzers wirkt sich auf alle Tage aus (auch rückwirkend). Ein zeitraumbezogenes Bundesland (Umzug) gibt es vorerst nicht (E-25).
 
 ### 6.8 Formate
@@ -349,7 +352,7 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 |----|-------------|------|
 | F-30 | **Dashboard**: heute (Blöcke, Ist), laufende Woche (Ist/Soll/Saldo), laufender Monat (Ist/Soll bis heute/Saldo), **Überstundenkonto**, **Resturlaub** | M |
 | F-31 | **Monatsübersicht**: Summen Ist, Soll (bis heute und gesamt), Saldo des Monats, Überstundenkonto am Monatsende, Urlaubs-/Krankheitstage; Blättern zwischen Monaten | M |
-| F-32 | Monatsübersicht: **Tabelle aller Tage** des Monats (Datum, Wochentag, Zeitblöcke, Pause, Ist, Soll, Saldo, Abwesenheit/Feiertag, Notiz); Klick auf einen Tag öffnet die Tagesseite; Wochenenden und Feiertage optisch abgesetzt | M |
+| F-32 | Monatsübersicht: **Tabelle aller Tage** des Monats (Datum, Wochentag, Zeitblöcke, Pause, Ist, Soll, Saldo, **Konto**, Abwesenheit/Feiertag, Notiz). „Konto“ ist der Stand des Überstundenkontos am Ende des Tages, so dass jede Buchung nachvollziehbar ist (Tage ohne Buchung blass; Zukunft leer; in KW- und Monatszeile der Stand am Ende); auch in Excel („Konto (h)“) und PDF; Klick auf einen Tag öffnet die Tagesseite; Wochenenden und Feiertage optisch abgesetzt | M |
 | F-33 | Monatsübersicht: **Wochen-Zwischenzeilen** „KW nn“ (6.5) | M |
 | F-34 | **Jahresübersicht** für das aktuelle Jahr: 12 Monate mit Ist, Soll, Saldo, Überstundenkonto am Monatsende, Urlaubs- und Krankheitstage; Jahressummen; Urlaubskonto des Jahres | M |
 | F-35 | Jahresübersicht: **andere Jahre** auswählbar (Blättern und Auswahlliste der Jahre mit Daten) | M |
@@ -373,7 +376,7 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 {
   "format": "stundenerfassung-export",
   "version": 1,
-  "app_version": "0.1.0",
+  "app_version": "0.2.0",
   "exported_at": "2026-10-15T09:30:00.000Z",
   "username": "moritz",
   "settings": { "state": "NW", "tracking_start": "2026-09-01", "overtime_start_minutes": 195, "vacation_days_default": 30 },
@@ -564,7 +567,7 @@ Stundenerfassung/
 | `ci.yml` | Push, PR auf `master` | `npm test` (Node 22 und 24); Docker-Image bauen, Container starten, `/health` prüfen |
 | `release.yml` | Release veröffentlicht, oder von Hand („Run workflow“ mit Tag) | Tag `vX.Y.Z` = `package.json`; Tests; Multi-Arch-Image (`amd64`, `arm64`) nach ghcr.io mit Tags `X.Y.Z`, `X.Y`, `X`, `latest` (Vorabversionen ohne `latest`) |
 
-**Versionen:** Die Software trägt die Version des nächsten Releases (aktuell `0.1.0`). Die Version in `package.json` wird nur beim Release geändert, nicht bei jeder Änderung. Das Release wird auf dem Commit getaggt, dessen `package.json` diese Version enthält – sonst bricht der Release-Workflow mit einer Meldung ab.
+**Versionen:** Die Software trägt die Version des nächsten Releases (aktuell `0.2.0`). Die Version in `package.json` wird nur beim Release geändert, nicht bei jeder Änderung. Das Release wird auf dem Commit getaggt, dessen `package.json` diese Version enthält – sonst bricht der Release-Workflow mit einer Meldung ab.
 
 ## 11. Nicht-funktionale Anforderungen
 
@@ -588,7 +591,7 @@ Stundenerfassung/
 - Direkte Weitergabe an den Arbeitgeber (PDF/Excel werden nur heruntergeladen).
 - Import aus Excel oder fremden Formaten (Import liest nur die eigene Sicherungsdatei).
 - Rundungsregeln (immer minutengenau).
-- Verfall von Resturlaub, Sonderregeln für Heiligabend/Silvester, regionale Feiertage (z. B. Augsburger Friedensfest, Mariä Himmelfahrt in Teilen Bayerns).
+- Verfall von Resturlaub, regionale Feiertage (z. B. Augsburger Friedensfest, Mariä Himmelfahrt in Teilen Bayerns).
 - Teilen von Daten zwischen Nutzern, Rollen/Admin.
 - „Passwort vergessen“ per E-Mail.
 - Eigene Wochenseite (die Woche erscheint im Dashboard und als Zwischenzeile im Monat).
@@ -628,6 +631,8 @@ Stundenerfassung/
 | E-27 | Feiertage nicht angerechnet | Einstellung je Arbeitszeitmodell (Default: Feiertage mindern das Soll). Gilt nur für Feiertage, nicht für Urlaub/Krankheit. |
 | E-28 | Wochensoll | Einstellung je Arbeitszeitmodell „feste Arbeitstage“ (Default) oder „Wochensoll“; Minus erst nach Ablauf der Woche. |
 | E-29 | Woche über Monatsgrenze | Aufteilung nach den üblichen Tagen. Alternative für später: ganze Woche zum Monat ihres Donnerstags (ISO). |
+| E-30 | Heiligabend/Silvester | Halbe Arbeitstage (halbes Soll, Abwesenheit zählt halb); nicht bei „Feiertage nicht angerechnet“. |
+| E-31 | Konto in der Monatsübersicht | Spalte mit dem Stand des Überstundenkontos am Ende jedes Tages. |
 
 ### 13.2 Offene Fragen
 
@@ -672,3 +677,4 @@ Das Projekt steht unter der **GNU General Public License v3.0** (siehe [`LICENSE
 | v0.2.1 | Datumsfelder als Textfelder im deutschen Format statt Browser-Datumsfelder (6.8). |
 | v0.3 | Import & Export (F-41 bis F-45, Format der Datensicherung in 7.6, Routen in Kap. 9); Vorschläge F9 (nicht angerechnete Feiertage) und F10 (Wochensoll für wechselnde Arbeitstage) als offene Fragen. |
 | v0.4 | F9/F10 entschieden und umgesetzt: Arbeitszeitmodell mit `distribution` (feste Arbeitstage / Wochensoll, 6.4a) und `holidays_credited` (E-27 bis E-29); Excel-Blatt „Wochen“. |
+| v0.5 | Heiligabend und Silvester als halbe Arbeitstage (E-30, 6.7); Spalte „Konto“ mit dem Tagesstand des Überstundenkontos in Monatsübersicht, Excel und PDF (E-31, F-32). |

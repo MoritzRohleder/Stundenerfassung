@@ -31,7 +31,7 @@ test('F9: Feiertag nicht angerechnet – normales Tagessoll', () => {
   assert.equal(hasTarget(credited, '2026-12-25'), false);
   assert.equal(hasTarget(notCredited, '2026-12-25'), true, 'Urlaub am Feiertag möglich');
   assert.equal(summarize(notCredited, '2026-12-21', '2026-12-27').soll, h(20));
-  assert.equal(summarize(credited, '2026-12-21', '2026-12-27').soll, h(16));
+  assert.equal(summarize(credited, '2026-12-21', '2026-12-27').soll, h(14), 'Mo–Mi je 4 h, Heiligabend 2 h, 1. Weihnachtstag 0');
 });
 
 test('F10: Wochensoll – egal an welchen Tagen gearbeitet wird', () => {
@@ -118,4 +118,30 @@ test('Arbeitszeitmodell mit Wochensoll über die Oberfläche', async (t) => {
   const p = backup.work_schedules.find((x) => x.valid_from === '2026-10-12');
   assert.equal(p.distribution, 'weekly');
   assert.equal(p.holidays_credited, false);
+});
+
+test('Heiligabend und Silvester sind halbe Arbeitstage', () => {
+  const std = model({ weekly_min: h(40), workdays: [1, 2, 3, 4, 5] });
+  const c = ctx({
+    schedule: std,
+    days: [day('2026-12-24', { absence_type: 'vacation', absence_fraction: 1, manual_break_min: null })],
+  });
+  // 24.12.2026 Donnerstag, 31.12.2026 Donnerstag
+  assert.equal(dayResult(c, '2026-12-31').soll, h(4));
+  assert.equal(dayResult(c, '2026-12-31').halfDay, 'Silvester');
+  assert.equal(dayResult(c, '2026-12-24').soll, 0, 'Urlaub für den halben Tag');
+  assert.equal(dayResult(c, '2026-12-24').absenceDays, 0.5, 'kostet einen halben Urlaubstag');
+  assert.equal(summarize(c, '2026-12-01', '2026-12-31').vacationDays, 0.5);
+  assert.equal(dayResult(c, '2027-12-24').soll, h(4), '24.12.2027 ist ein Freitag');
+  assert.equal(dayResult(c, '2028-12-24').soll, 0, '24.12.2028 ist ein Sonntag – kein Arbeitstag');
+  // Werkstudent (Feiertage nicht angerechnet): volles Soll
+  const student = ctx({ schedule: model({ weekly_min: h(40), workdays: [1, 2, 3, 4, 5], holidays_credited: false }) });
+  assert.equal(dayResult(student, '2026-12-31').soll, h(8));
+});
+
+test('Monatsübersicht: Kontostand am Ende jedes Tages', () => {
+  const c = ctx({ schedule: model({ weekly_min: h(40), workdays: [1, 2, 3, 4, 5] }), blocks: [blk('2026-09-01', 9), blk('2026-09-02', 7)], today: '2026-09-04' });
+  const days = monthView(c, 2026, 9).rows.filter((r) => r.kind === 'day');
+  // 01.09. +1:00, 02.09. −1:00, 03.09. ohne Eintrag −8:00, 04.09. = heute ohne Eintrag ±0, 05.09. Zukunft
+  assert.deepEqual(days.slice(0, 5).map((r) => r.overtime), [h(1), 0, -h(8), -h(8), null]);
 });

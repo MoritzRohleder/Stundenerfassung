@@ -173,7 +173,10 @@ test('Excel- und PDF-Export', async (t) => {
   assert.equal(istMin, 465, 'Ist als Excel-Dauer');
   assert.equal(row7.getCell('H').value, 7.75);
   assert.equal(row7.getCell('L').value, -0.25);
-  assert.equal(tage.getRow(4).getCell('N').value, 'Tag der Deutschen Einheit');
+  assert.equal(tage.getRow(4).getCell('O').value, 'Tag der Deutschen Einheit');
+  // Konto: Startsaldo +2:00, 01./02.10. ohne Eintrag (−16:00), 05.10. +0:15, 06.10. ±0, 07.10. −0:15 → −14:00
+  assert.equal(row7.getCell('M').value, -14);
+  assert.equal(tage.getRow(2).getCell('M').value, -6, '01.10.: +2:00 − 8:00');
   assert.equal(wb.getWorksheet('Monate').getRow(2).getCell('A').value, 'Oktober 2026');
 
   const pdf = await c.download('/daten/export?format=pdf&von_m=9&von_j=2026&bis_m=12&bis_j=2026');

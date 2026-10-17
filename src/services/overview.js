@@ -24,8 +24,16 @@ function monthRange(year, month) {
 function monthView(ctx, year, month) {
   const { from, to } = monthRange(year, month);
   const rows = [];
+  // Laufender Stand des Überstundenkontos am Ende jedes Tages (nur gewertete Tage bis heute).
+  let running = overtimeAt(ctx, addDays(from, -1));
   for (const iso of eachDay(from, to)) {
-    rows.push({ kind: 'day', ...dayResult(ctx, iso) });
+    const r = dayResult(ctx, iso);
+    let overtime = null;
+    if (r.tracked && r.status !== 'future') {
+      running += r.counted;
+      overtime = running;
+    }
+    rows.push({ kind: 'day', ...r, overtime });
     if (isoWeekday(iso) === 7 || iso === to) {
       const monday = startOfWeek(iso);
       const weekFrom = monday < from ? from : monday;
@@ -35,6 +43,7 @@ function monthView(ctx, year, month) {
         week: isoWeek(iso).week,
         partial: monday < from || sunday > to,
         ...summarize(ctx, weekFrom, iso),
+        overtime: weekFrom <= ctx.today && iso >= (ctx.user.tracking_start || '9999') ? overtimeAt(ctx, iso) : null,
       });
     }
   }

@@ -98,4 +98,15 @@ function holidayName(iso, state) {
   return holidaysOf(Number(iso.slice(0, 4)), state).get(iso) || null;
 }
 
-module.exports = { STATES, easterSunday, holidaysOf, holidayName };
+/**
+ * Halbe Arbeitstage: Heiligabend und Silvester (kein gesetzlicher Feiertag, Soll halbiert).
+ * Gibt den Namen oder null zurück.
+ */
+function halfDayName(iso) {
+  const md = iso.slice(5);
+  if (md === '12-24') return 'Heiligabend';
+  if (md === '12-31') return 'Silvester';
+  return null;
+}
+
+module.exports = { STATES, easterSunday, holidaysOf, holidayName, halfDayName };

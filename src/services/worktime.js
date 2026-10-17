@@ -2,7 +2,7 @@
 
 const { isoWeekday, eachDay, addDays, toISO, daysInMonth } = require('../utils/date');
 const { computeBreak } = require('./breaks');
-const { holidayName } = require('./holidays');
+const { holidayName, halfDayName } = require('./holidays');
 const { scheduleFor, dailyTarget } = require('./schedules');
 
 // Ist, Soll, Saldo und Überstundenkonto (Spec 6.1–6.5).
@@ -84,6 +84,10 @@ function dayBase(ctx, iso) {
   const isWorkday = Boolean(schedule && schedule.workdays.includes(weekday));
   const weekly = isWeekly(schedule);
   const credited = holidaysCredited(schedule);
+  // Heiligabend/Silvester: halber Arbeitstag – wie Feiertage nur, wenn das Modell Feiertage anrechnet.
+  const halfDay = holiday ? null : halfDayName(iso);
+  const halfDayCredited = Boolean(halfDay) && credited;
+  const dayFactor = halfDayCredited ? 0.5 : 1;
   const tracked = Boolean(user.tracking_start && iso >= user.tracking_start);
 
   const absenceType = day && day.absence_type ? day.absence_type : null;
@@ -92,7 +96,7 @@ function dayBase(ctx, iso) {
 
   // Beim Wochensoll liegt das Soll rechnerisch auf den üblichen Tagen; so wird eine Woche
   // über eine Monatsgrenze nach den üblichen Tagen aufgeteilt (F10).
-  const soll = !tracked || (holiday && credited) ? 0 : Math.round(target * (1 - share));
+  const soll = !tracked || (holiday && credited) ? 0 : Math.round(target * dayFactor * (1 - share));
   const ist = br.istMin;
   const saldo = tracked ? ist - soll : 0;
 
@@ -117,6 +121,10 @@ function dayBase(ctx, iso) {
     ...br,
     holiday,
     holidayCredited: Boolean(holiday) && credited,
+    halfDay,
+    halfDayCredited,
+    // Abwesenheit in Tagen: an einem halben Arbeitstag zählt ein freier Tag nur halb (z. B. ½ Urlaubstag).
+    absenceDays: absenceType ? absenceFraction * dayFactor : 0,
     isWorkday,
     weekly,
     target,
@@ -196,7 +204,13 @@ function isOffDay(r) {
   return r.holidayCredited || !r.isWorkday;
 }
 
+/** Ob an einem Tag nur ein halber Arbeitstag anfällt (Heiligabend/Silvester, F-15). */
+function isHalfWorkday(ctx, iso) {
+  return Boolean(halfDayName(iso)) && !holidayName(iso, ctx.user.state) && holidaysCredited(scheduleFor(ctx.schedules, iso));
+}
+
 function holidayText(r) {
+  if (r.halfDay) return r.halfDayCredited && r.target > 0 ? `${r.halfDay} (halber Arbeitstag)` : r.halfDay;
   if (!r.holiday) return '';
   // Der Zusatz ist nur interessant, wenn der Feiertag auf einen (üblichen) Arbeitstag fällt.
   return !r.holidayCredited && r.target > 0 ? `${r.holiday} (nicht angerechnet)` : r.holiday;
@@ -224,10 +238,10 @@ function summarize(ctx, from, to) {
     if (r.status === 'past') sum.sollElapsed += r.soll;
     sum.saldo += r.counted;
     if (r.blocks.length) sum.workedDays += 1;
-    if (r.absenceType === 'vacation') sum.vacationDays += r.absenceFraction;
-    if (r.absenceType === 'sick') sum.sickDays += r.absenceFraction;
-    if (r.absenceType === 'comp_time') sum.compDays += r.absenceFraction;
-    if (r.absenceType === 'other_paid') sum.otherDays += r.absenceFraction;
+    if (r.absenceType === 'vacation') sum.vacationDays += r.absenceDays;
+    if (r.absenceType === 'sick') sum.sickDays += r.absenceDays;
+    if (r.absenceType === 'comp_time') sum.compDays += r.absenceDays;
+    if (r.absenceType === 'other_paid') sum.otherDays += r.absenceDays;
   }
   return sum;
 }
@@ -271,6 +285,7 @@ function weekDays(iso) {
 
 module.exports = {
   ABSENCE_TYPES,
+  isHalfWorkday,
   showsDaySoll,
   showsDaySaldo,
   isOffDay,

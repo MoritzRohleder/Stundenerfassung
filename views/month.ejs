@@ -14,7 +14,7 @@
   <% if (view.isCurrent) { %><p><small class="muted">davon bis gestern <%= fmt.hm(s.sollElapsed) %> h</small></p><% } %>
   </article>
   <article class="card"><header>Saldo des Monats</header><p class="big"><%- include('partials/duration', { min: s.saldo, signed: true }) %></p></article>
-  <article class="card"><header>Überstundenkonto am Monatsende</header>
+  <article class="card"><header>Konto am Monatsende</header>
     <p class="big"><% if (view.overtimeEnd === null) { %>–<% } else { %><%- include('partials/duration', { min: view.overtimeEnd, signed: true }) %><% } %></p>
   <% if (view.isCurrent) { %><p><small class="muted">Stand heute</small></p><% } %>
   </article>
@@ -33,6 +33,7 @@
       <th class="num">Ist</th>
       <th class="num">Soll</th>
       <th class="num">Saldo</th>
+      <th class="num" title="Stand des Überstundenkontos am Ende des Tages">Konto</th>
       <th>Info</th>
     </tr>
   </thead>
@@ -44,6 +45,7 @@
       <td class="num"><%- include('partials/duration', { min: row.ist }) %></td>
       <td class="num"><%- include('partials/duration', { min: row.soll }) %></td>
       <td class="num"><%- include('partials/duration', { min: row.saldo, signed: true }) %></td>
+      <td class="num"><% if (row.overtime !== null) { %><%- include('partials/duration', { min: row.overtime, signed: true }) %><% } %></td>
       <td></td>
     </tr>
   <% } else {
@@ -56,7 +58,9 @@
       <td class="num"><% if (row.ist || row.blocks.length) { %><%- include('partials/duration', { min: row.ist }) %><% } %></td>
       <td class="num"><% if (showsDaySoll(row)) { %><%- include('partials/duration', { min: row.soll }) %><% } else if (row.weekly && row.soll) { %><span class="muted" title="Wochensoll – Soll und Saldo stehen in der KW-Zeile">W</span><% } %></td>
       <td class="num"><% if (showsDaySaldo(row)) { %><%- include('partials/duration', { min: row.saldo, signed: true }) %><% } %></td>
+      <td class="num konto-cell<% if (!row.counted) { %> unchanged<% } %>"<% if (row.counted) { %> title="<%= fmt.signedHM(row.counted) %> h gebucht"<% } %>><% if (row.overtime !== null) { %><%- include('partials/duration', { min: row.overtime, signed: true }) %><% } %></td>
       <td class="info-cell">
+        <% if (row.halfDay) { %><span class="tag tag-off"><%= holidayText(row) %></span><% } %>
         <% if (row.holiday) { %><span class="tag <%= (row.holidayCredited || !row.target) ? 'tag-off' : 'tag-warning' %>"><%= holidayText(row) %></span><% } %>
         <% if (row.absenceType) { %><span class="tag tag-<%= row.absenceType %>" title="<%= absenceLabel(row.absenceType, row.absenceFraction) %>"><%= absenceLabel(row.absenceType, row.absenceFraction) %></span><% } %>
         <% row.hints.forEach((h) => { %><span class="tag tag-warning" title="<%= h %>">⚠ <%= h %></span><% }) %>
@@ -72,12 +76,13 @@
       <td class="num"><%- include('partials/duration', { min: s.ist }) %></td>
       <td class="num"><%- include('partials/duration', { min: s.soll }) %></td>
       <td class="num"><%- include('partials/duration', { min: s.saldo, signed: true }) %></td>
+      <td class="num"><% if (view.overtimeEnd !== null) { %><%- include('partials/duration', { min: view.overtimeEnd, signed: true }) %><% } %></td>
       <td></td>
     </tr>
   </tfoot>
 </table>
 </div>
-<p><small class="muted">Saldo zählt nur abgelaufene Tage; heute nur Plusstunden. „a“ = automatische Pause, „W“ = Wochensoll (Soll und Saldo in der KW-Zeile, Minus erst nach Ablauf der Woche). Klick auf einen Tag zum Erfassen.</small></p>
+<p><small class="muted">Saldo zählt nur abgelaufene Tage; heute nur Plusstunden. „Konto“ = Stand des Überstundenkontos am Ende des Tages (blass: an dem Tag unverändert). „a“ = automatische Pause, „W“ = Wochensoll (Soll und Saldo in der KW-Zeile, Minus erst nach Ablauf der Woche). Klick auf einen Tag zum Erfassen.</small></p>
 <p class="button-row">
   <a href="/abwesenheit/neu">Urlaub für einen Zeitraum eintragen →</a>
   <span class="muted">Export:</span>

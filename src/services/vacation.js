@@ -1,5 +1,7 @@
 'use strict';
 
+const { isHalfWorkday } = require('./worktime');
+
 // Urlaubskonto (Spec 6.6).
 
 function trackingYear(user) {
@@ -17,8 +19,10 @@ function takenIn(ctx, year) {
   const prefix = `${year}-`;
   for (const [date, day] of ctx.daysByDate) {
     if (!date.startsWith(prefix) || day.absence_type !== 'vacation') continue;
-    taken += day.absence_fraction;
-    if (date > ctx.today) planned += day.absence_fraction;
+    // Heiligabend/Silvester sind halbe Arbeitstage: frei nehmen kostet einen halben Urlaubstag.
+    const days = day.absence_fraction * (isHalfWorkday(ctx, date) ? 0.5 : 1);
+    taken += days;
+    if (date > ctx.today) planned += days;
   }
   return { taken, planned };
 }

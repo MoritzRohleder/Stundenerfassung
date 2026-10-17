@@ -9,6 +9,7 @@
 <% if (date === today) { %><span class="tag">heute</span><% } %>
 <% if (r.holiday) { %><span class="tag <%= (r.holidayCredited || !r.target) ? 'tag-off' : 'tag-warning' %>">Feiertag: <%= holidayText(r) %></span><% } %>
 <% if (!r.isWorkday && !r.holiday) { %><span class="tag tag-off"><%= r.weekly ? 'kein üblicher Arbeitstag' : 'freier Tag' %></span><% } %>
+<% if (r.halfDay) { %><span class="tag tag-off"><%= holidayText(r) %></span><% } %>
 <% if (r.weekly) { %><span class="tag">Wochensoll</span><% } %>
 <% if (!r.tracked) { %><span class="tag tag-off">vor Beginn der Erfassung – zählt nicht ins Konto</span><% } %>
 </p>
@@ -17,7 +18,7 @@
 
 <div class="grid day-grid">
 <form method="post" action="/tag/<%= date %>" id="day-form"
-      data-model-target="<%= modelTarget %>" data-holiday="<%= r.holidayCredited ? 1 : 0 %>" data-tracked="<%= r.tracked ? 1 : 0 %>" data-weekly="<%= r.weekly ? 1 : 0 %>">
+      data-model-target="<%= modelTarget %>" data-holiday="<%= r.holidayCredited ? 1 : 0 %>" data-tracked="<%= r.tracked ? 1 : 0 %>" data-weekly="<%= r.weekly ? 1 : 0 %>" data-day-factor="<%= r.halfDayCredited ? 0.5 : 1 %>">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <input type="hidden" name="back" value="<%= back %>">
 

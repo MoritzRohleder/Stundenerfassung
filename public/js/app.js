@@ -70,6 +70,7 @@
     const holiday = form.dataset.holiday === '1';
     const tracked = form.dataset.tracked === '1';
     const weekly = form.dataset.weekly === '1';
+    const dayFactor = Number(form.dataset.dayFactor || 1);
 
     addBtn.hidden = false;
     addBtn.addEventListener('click', () => {
@@ -105,7 +106,7 @@
         const halfAllowed = opt && opt.value && opt.dataset.half === '1';
         fractionRow.hidden = !opt || !opt.value;
         const half = fractionRow.querySelector('input[value="0.5"]');
-        half.disabled = !halfAllowed;
+        half.disabled = !halfAllowed || dayFactor < 1;
         if (!halfAllowed) fractionRow.querySelector('input[value="1"]').checked = true;
       }
       if (invalid) return;
@@ -137,7 +138,7 @@
           share = checked && checked.value === '0.5' ? 0.5 : 1;
         }
       }
-      const soll = !tracked || holiday ? 0 : Math.round(modelTarget * (1 - share));
+      const soll = !tracked || holiday ? 0 : Math.round(modelTarget * dayFactor * (1 - share));
       const saldo = tracked ? ist - soll : 0;
 
       const set = (key, node) => {

@@ -115,6 +115,7 @@ async function excelReport(ctx, months) {
     { header: 'Soll (h)', key: 'sollDec', width: 9, style: { numFmt: DEC_FMT } },
     { header: 'Saldo', key: 'saldo', width: 9 },
     { header: 'Saldo (h)', key: 'saldoDec', width: 10, style: { numFmt: '+0.00;-0.00;0.00' } },
+    { header: 'Konto (h)', key: 'kontoDec', width: 10, style: { numFmt: '+0.00;-0.00;0.00' } },
     { header: 'Abwesenheit', key: 'absence', width: 22 },
     { header: 'Feiertag', key: 'holiday', width: 24 },
     { header: 'Hinweise', key: 'hints', width: 34 },
@@ -139,6 +140,7 @@ async function excelReport(ctx, months) {
         sollDec: showsDaySoll(row) ? Math.round((row.soll / 60) * 100) / 100 : null,
         saldo: saldo ? formatSignedHM(row.saldo).replace('−', '-') : '',
         saldoDec: saldo ? Math.round((row.saldo / 60) * 100) / 100 : null,
+        kontoDec: row.overtime === null ? null : Math.round((row.overtime / 60) * 100) / 100,
         absence: absenceText(row),
         holiday: holidayText(row),
         hints: row.hints.join('; '),
@@ -147,7 +149,7 @@ async function excelReport(ctx, months) {
       if (isOffDay(row)) r.font = { color: { argb: 'FF64748B' } };
     }
   }
-  ws.autoFilter = { from: 'A1', to: 'P1' };
+  ws.autoFilter = { from: 'A1', to: 'Q1' };
 
   // Monate
   const ms = wb.addWorksheet('Monate', { views: [{ state: 'frozen', ySplit: 1 }] });
@@ -248,14 +250,15 @@ function pdfText(s) {
 }
 
 const COLS = [
-  { key: 'date', title: 'Datum', width: 52 },
-  { key: 'blocks', title: 'Zeiten', width: 120 },
-  { key: 'pause', title: 'Pause', width: 60, align: 'right' },
+  { key: 'date', title: 'Datum', width: 50 },
+  { key: 'blocks', title: 'Zeiten', width: 104 },
+  { key: 'pause', title: 'Pause', width: 56, align: 'right' },
   { key: 'ist', title: 'Ist', width: 42, align: 'right' },
   { key: 'soll', title: 'Soll', width: 42, align: 'right' },
   { key: 'saldo', title: 'Saldo', width: 46, align: 'right' },
-  { key: 'gap', title: '', width: 8 },
-  { key: 'info', title: 'Info', width: 145 },
+  { key: 'konto', title: 'Konto', width: 52, align: 'right' },
+  { key: 'gap', title: '', width: 6 },
+  { key: 'info', title: 'Info', width: 117 },
 ];
 
 function pdfReport(ctx, months) {
@@ -333,7 +336,7 @@ function pdfReport(ctx, months) {
     for (const r of mv.rows) {
       if (r.kind === 'week') {
         row(
-          { date: `KW ${r.week}${r.partial ? ' (Teil)' : ''}`, ist: dur(r.ist), soll: dur(r.soll), saldo: signed(r.saldo) },
+          { date: `KW ${r.week}${r.partial ? ' (Teil)' : ''}`, ist: dur(r.ist), soll: dur(r.soll), saldo: signed(r.saldo), konto: r.overtime === null ? '' : signed(r.overtime) },
           { bold: true, shade: '#eef2ff' },
         );
         continue;
@@ -348,6 +351,7 @@ function pdfReport(ctx, months) {
           ist: r.blocks.length ? dur(r.ist) : '',
           soll: showsDaySoll(r) ? dur(r.soll) : r.weekly && r.soll ? 'W' : '',
           saldo: showsDaySaldo(r) ? signed(r.saldo) : '',
+          konto: r.overtime === null ? '' : signed(r.overtime),
           info,
         },
         { shade: off ? '#f1f5f9' : null, color: off ? GREY : '#000' },
@@ -355,7 +359,7 @@ function pdfReport(ctx, months) {
     }
     doc.moveTo(left, doc.y).lineTo(left + 515, doc.y).strokeColor('#999').lineWidth(0.5).stroke();
     doc.y += 3;
-    row({ date: 'Monat', ist: dur(s.ist), soll: dur(s.soll), saldo: signed(s.saldo) }, { bold: true });
+    row({ date: 'Monat', ist: dur(s.ist), soll: dur(s.soll), saldo: signed(s.saldo), konto: mv.overtimeEnd === null ? '' : signed(mv.overtimeEnd) }, { bold: true });
   });
 
   // Jahresübersicht(en), wenn mehr als ein Monat exportiert wird
