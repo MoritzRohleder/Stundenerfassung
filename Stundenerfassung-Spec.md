@@ -1,7 +1,7 @@
 # Stundenerfassung-Spec
 
 > Spezifikation für die Webanwendung **Stundenerfassung** zum privaten Nachhalten der eigenen Arbeitszeit.
-> Status: **v0.5** der Spezifikation – im Prototyp umgesetzt (M0 bis M7.2).
+> Status: **v0.6** der Spezifikation – im Prototyp umgesetzt (M0 bis M7.2).
 > Die Versionsnummer der Spezifikation ist unabhängig von der Version der Software (siehe 10.9).
 > Technisch angelehnt an das Haushaltsprojekt (Node.js, Express, EJS, Pico.css, JSON-Dateien, Docker), aber nicht 1:1.
 > Getroffene Entscheidungen stehen in [Kapitel 13.1](#131-entscheidungen), offene Punkte in [Kapitel 13.2](#132-offene-fragen) (im Text mit `❓` markiert).
@@ -345,6 +345,7 @@ Priorität: **M** = Muss (MVP), **S** = Soll (kurz nach MVP), **K** = Kann (spä
 | F-24 | Schnelleingabe: „+ Heute“ global in der Navigation; Vor/Zurück-Tag auf der Tagesseite; „Speichern & nächster Tag“ | S |
 | F-25 | Hinweise (nicht blockierend): Mindestpause unterschritten, mehr als 10 h Ist, Arbeit an Feiertag/Wochenende, Zeitblöcke an einem ganzen Abwesenheitstag | S |
 | F-26 | **Urlaub für einen Zeitraum** in einem Schritt eintragen (von–bis; Wochenenden, Feiertage und Nicht-Arbeitstage werden übersprungen) | S |
+| F-27 | **Automatisch speichern** auf der Tagesseite (mit JavaScript): beim Verlassen eines Feldes, bei geänderter Auswahl und sobald ein Zeitblock vollständig ist (nach kurzer Tipp-Pause). Unvollständige oder fehlerhafte Eingaben werden nicht gespeichert, sondern mit Grund angezeigt („Ende muss nach dem Beginn liegen“). Status „Gespeichert um HH:MM“; die Berechnung inkl. Hinweisen und Wochenstand kommt danach vom Server. Beim Verlassen der Seite wird ein offener, gültiger Stand noch nachgeschickt. Uhrzeiten werden beim Verlassen des Feldes als `HH:MM` dargestellt. Die Speichern-Knöpfe bleiben (ohne JavaScript unverändert) | S |
 
 ### 7.4 Übersichten
 
@@ -633,6 +634,7 @@ Stundenerfassung/
 | E-29 | Woche über Monatsgrenze | Aufteilung nach den üblichen Tagen. Alternative für später: ganze Woche zum Monat ihres Donnerstags (ISO). |
 | E-30 | Heiligabend/Silvester | Halbe Arbeitstage (halbes Soll, Abwesenheit zählt halb); nicht bei „Feiertage nicht angerechnet“. |
 | E-31 | Konto in der Monatsübersicht | Spalte mit dem Stand des Überstundenkontos am Ende jedes Tages. |
+| E-32 | Automatisch speichern | Die Tagesseite speichert gültige Eingaben selbst (F-27); Knöpfe bleiben zusätzlich. |
 
 ### 13.2 Offene Fragen
 
@@ -678,3 +680,4 @@ Das Projekt steht unter der **GNU General Public License v3.0** (siehe [`LICENSE
 | v0.3 | Import & Export (F-41 bis F-45, Format der Datensicherung in 7.6, Routen in Kap. 9); Vorschläge F9 (nicht angerechnete Feiertage) und F10 (Wochensoll für wechselnde Arbeitstage) als offene Fragen. |
 | v0.4 | F9/F10 entschieden und umgesetzt: Arbeitszeitmodell mit `distribution` (feste Arbeitstage / Wochensoll, 6.4a) und `holidays_credited` (E-27 bis E-29); Excel-Blatt „Wochen“. |
 | v0.5 | Heiligabend und Silvester als halbe Arbeitstage (E-30, 6.7); Spalte „Konto“ mit dem Tagesstand des Überstundenkontos in Monatsübersicht, Excel und PDF (E-31, F-32). |
+| v0.6 | Automatisches Speichern auf der Tagesseite (F-27, E-32). |

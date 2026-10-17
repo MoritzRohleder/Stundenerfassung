@@ -79,10 +79,23 @@ function mainRoutes({ repos, clock }) {
     const back = safeReturn(req.body.back, `/monat/${date.slice(0, 4)}/${Number(date.slice(5, 7))}`);
     const ctx = await loadContext(repos, req.user, clock.today());
     const parsed = parseDayForm(req.body, ctx, date);
+    // Automatisches Speichern aus der Tagesseite (fetch): Antwort als JSON statt Weiterleitung.
+    const autosave = req.get('X-Requested-With') === 'fetch';
     if (parsed.errors.length) {
+      if (autosave) return res.status(400).json({ ok: false, errors: parsed.errors });
       return renderDay(res, ctx, date, { input: parsed.input, errors: parsed.errors, status: 400, back });
     }
     await saveDay(repos, req.user.id, date, parsed.blocks, parsed.day);
+    if (autosave) {
+      const fresh = await loadContext(repos, req.user, clock.today());
+      const r = dayResult(fresh, date);
+      const week = r.weekly ? weekSummary(fresh, date) : null;
+      return res.json({
+        ok: true,
+        day: { blockMin: r.blockMin, breakMin: r.breakMin, breakSource: r.breakSource, ist: r.ist, soll: r.soll, saldo: r.saldo, hints: r.hints },
+        week: week && { ist: week.ist, soll: week.soll, open: week.open },
+      });
+    }
     req.session.flash = { type: 'success', text: 'Gespeichert.' };
     if (req.body.action === 'next') return res.redirect(`/tag/${addDays(date, 1)}?zurueck=${encodeURIComponent(back)}`);
     if (req.body.action === 'back') return res.redirect(back);

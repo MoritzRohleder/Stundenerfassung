@@ -71,6 +71,7 @@
     <button type="submit" name="action" value="next" class="secondary">Speichern &amp; nächster Tag</button>
     <button type="submit" name="action" value="back" class="secondary outline">Speichern &amp; zurück</button>
   </div>
+  <p class="autosave-status" id="autosave-status" role="status" aria-live="polite" hidden></p>
 </form>
 
 <aside>
@@ -88,9 +89,9 @@
   <% if (week) { %>
     <p><strong>Woche (KW <%= week.number %>)</strong> <small class="muted">– gespeicherter Stand</small></p>
     <dl class="kv">
-      <dt>Ist</dt><dd><%- include('partials/duration', { min: week.ist }) %></dd>
-      <dt>Wochensoll</dt><dd><%- include('partials/duration', { min: week.soll }) %></dd>
-      <dt>Noch offen</dt><dd><%- include('partials/duration', { min: week.open }) %></dd>
+      <dt>Ist</dt><dd data-week="ist"><%- include('partials/duration', { min: week.ist }) %></dd>
+      <dt>Wochensoll</dt><dd data-week="soll"><%- include('partials/duration', { min: week.soll }) %></dd>
+      <dt>Noch offen</dt><dd data-week="open"><%- include('partials/duration', { min: week.open }) %></dd>
     </dl>
     <p><small class="muted">Beim Wochensoll ist egal, an welchen Tagen du arbeitest. Ein Minus zählt erst nach Ablauf der Woche.</small></p>
   <% } %>
